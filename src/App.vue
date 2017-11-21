@@ -3,40 +3,40 @@
     <section class="section container">
       <div class="row">
         <div class="col-md-3">
-          <multiselect v-model="reposValue" :options="reposOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" placeholder="All Repos" label="name" track-by="name" @input="updateIssues" selectLabel="">
+          <multiselect v-model="reposValue" :options="reposOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" placeholder="All Repos" label="full_name" track-by="full_name" @input="updateIssues" selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
-                <span>{{ props.option.name }}</span>
+                <span>{{ props.option.full_name }}</span>
                 <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
               </span>
             </template>
           </multiselect>
         </div>
         <div class="col-md-3">
-          <multiselect v-model="assigneesValue" :options="assigneesOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" placeholder="All Assignees" label="name" track-by="name" @input="updateIssues" selectLabel="">
+          <multiselect v-model="assigneesValue" :options="assigneesOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" placeholder="All Assignees" label="login" track-by="login" @input="updateIssues" selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
-                <span>{{ props.option.name }}</span>
+                <span>{{ props.option.login }}</span>
                 <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
               </span>
             </template>
           </multiselect>
         </div>
         <div class="col-md-3">
-          <multiselect v-model="milestonesValue" :options="milestonesOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" placeholder="All Labels" @input="updateIssues" selectLabel="">
+          <multiselect v-model="labelsValue" :options="labelsOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" label="name" track-by="name" placeholder="All Labels" @input="updateIssues" selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
-                <span>{{ props.option}}</span>
+                <span>{{ props.option.name}}</span>
                 <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
               </span>
             </template>
           </multiselect>
         </div>
         <div class="col-md-3">
-          <multiselect v-model="labelsValue" :options="labelsOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" placeholder="All Milestones" @input="updateIssues" selectLabel="">
+          <multiselect v-model="milestonesValue" :options="milestonesOptions" :multiple="true" :close-on-select="false" :clear-on-select="false" :hide-selected="true" :preserve-search="true" label="title" track-by="title" placeholder="All Milestones" @input="updateIssues" selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
-                <span>{{ props.option }}</span>
+                <span>{{ props.option.title }}</span>
                 <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
               </span>
             </template>
@@ -65,7 +65,7 @@
             </div>
           </div>
         </modal>
-        <div>
+        <div v-if="issue.assignee">
           <a href="javascript:void(0)">
             <span class="badge badge-secondary" v-on:click="showModal(issue.id)">#{{issue.id}}</span>
           </a>
@@ -74,8 +74,9 @@
         <div>
           <strong>{{ issue.title }}</strong>
         </div>
-        <div class="issue-tag">
+        <div class="issue-tag" v-if="issue.assignee">
           {{ issue.milestone.title }}
+          1.1.0
         </div>
         <div v-for="label in issue.labels" :key="label.title" class="issue-tag" :style="{ backgroundColor: '#'+label.color}" v-if="!stages.includes(label.name)">
           <span>{{label.name}}</span>
@@ -97,6 +98,7 @@
 </template>
 
 <script>
+import _ from 'lodash';
 import Multiselect from 'vue-multiselect';
 import VModal from 'vue-js-modal';
 import http from './http-common';
@@ -114,7 +116,7 @@ export default {
       stages: ['backlog', 'in-progress', 'question', 'validation', 'done'],
       issues: [], // Show issues on board
       allIssues: [], // All issues user can access
-      token: '670b1d21f0616df5ea5cd844eabe6dc5305c1654',
+      token: 'f48b0e812b76f52e36cc04178308ad8c763f40f2',
       reposValue: [],
       reposOptions: [],
       milestonesValue: [],
@@ -126,57 +128,99 @@ export default {
     };
   },
   created() {
-    const url = `/kanban?token=${this.token}`;
-    http.request.get(url).then(
+    const reposUrl = `/repos/search?token=${this.token}&uid=2`;
+    // const reposUrl = `/repos/search?token=${this.token}&uid=2`;
+    // const reposUrl = `/repos/search?token=${this.token}&uid=2`;
+    http.request.get(reposUrl).then(
       (response) => {
-        this.reposOptions = response.data.repos;
-        this.labelsOptions = response.data.labels;
-        this.milestonesOptions = response.data.milestones;
-        this.assigneesOptions = response.data.assignees;
-        this.allIssues = response.data.issues;
+        this.reposOptions = response.data.data;
 
-        // Set repo_id and status on all issues
-        for (let i = 0; i < this.allIssues.length; i += 1) {
-          // TODO: add cleaner way to get issue repo
-          const repoName = this.allIssues[i].url.split('/api/v1/repos/')[1].split('/')[1];
-          this.allIssues[i].repo = this.reposOptions.find(repo => repo.name === repoName);
+        _.forEach(this.reposOptions, (repo) => {
+          // Get milestones for each repo and add it to milestonesOptions
+          const milestonesUrl = `/repos/${repo.full_name}/milestones?token=${this.token}`;
+          http.request.get(milestonesUrl).then(
+            (milestonesResponse) => {
+              _.forEach(milestonesResponse.data, (milestone) => {
+                if (!_.find(this.milestonesOptions, { title: milestone.title })) {
+                  this.milestonesOptions.push(milestone);
+                }
+              });
+            });
 
-          // Set Labels
-          const labels = this.allIssues[i].labels;
-          for (let j = 0; j < labels.length; j += 1) {
-            this.allIssues[i].status = 'backlog';
-            if (this.stages.includes(labels[j].name)) {
-              this.allIssues[i].status = labels[j].name;
-              break;
-            }
-          }
-        }
+          // Get collaborators for each repo and add it to assigneesOptions
+          const collaboratorsUrl = `/repos/${repo.full_name}/collaborators?token=${this.token}`;
+          http.request.get(collaboratorsUrl).then(
+            (collaboratorsResponse) => {
+              collaboratorsResponse.data.push(repo.owner);
+              _.forEach(collaboratorsResponse.data, (collaborator) => {
+                if (!_.find(this.assigneesOptions, { id: collaborator.id })) {
+                  this.assigneesOptions.push(collaborator);
+                }
+              });
+            });
 
-        this.updateIssues();
+          // Get labels of each repo and add it to labelsOptions
+          const labelsUrl = `/repos/${repo.full_name}/labels?token=${this.token}`;
+          http.request.get(labelsUrl).then(
+            (labelsResponse) => {
+              _.forEach(labelsResponse.data, (label) => {
+                if (!_.find(this.labelsOptions, { title: label.title })) {
+                  this.labelsOptions.push(label);
+                }
+              });
+            });
+
+          // Get issues of each repo and add it to issuesOptions
+          const issuesUrl = `/repos/${repo.full_name}/issues?token=${this.token}`;
+          http.request.get(issuesUrl).then(
+            (issuesResponse) => {
+              /* eslint-disable no-param-reassign */
+              _.forEach(issuesResponse.data, (issue) => {
+                // Set repo and status on all issues
+                issue.repo = repo;
+                const labelObj = _.find(issue.labels, label => _.includes(this.stages, label.name));
+                if (labelObj) {
+                  issue.status = labelObj.name;
+                } else {
+                  issue.status = 'backlog';
+                }
+                this.allIssues.push(issue);
+              });
+              // Update the issues
+              this.updateIssues();
+            });
+        });
       });
   },
   methods: {
     updateIssues() {
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
+
+      // update issues based on the repo filter if provided
       if (this.reposValue.length > 0) {
-        this.issues = this.issues.filter(
-          iss => this.reposValue.map(r => r.id).includes(iss.repo.id),
-        );
+        this.issues = _.filter(this.issues, issue => _.some(this.reposValue, issue.repo));
       }
+
+      // update issues based on the assignee filter if provided
       if (this.assigneesValue.length > 0) {
-        this.issues = this.issues.filter(
-          iss => this.assigneesValue.map(a => a.id).includes(iss.assignee.id),
-        );
+        this.issues = _.filter(this.issues, (issue) => {
+          const assigned = !_.isEmpty(issue.assignee);
+          return assigned && _.some(this.assigneesValue, issue.assignee);
+        });
       }
+
+      // update issues based on the label filter if provided
       if (this.labelsValue.length > 0) {
-        this.issues = this.issues.filter(
-          iss => iss.labels.map(l => l.name).some(l => this.labelsValue.includes(l)),
+        this.issues = _.filter(this.issues, issue =>
+          !_.isEmpty(_.intersectionBy(this.labelsValue, issue.labels, 'id')),
         );
       }
+
+      // update issues based on the milestones filter if provided
       if (this.milestonesValue.length > 0) {
-        this.issues = this.issues.filter(
-          iss => this.milestonesValue.includes(iss.milestone.title),
+        this.issues = _.filter(this.issues, issue =>
+          !_.isEmpty(issue.milestone) && _.some(this.milestonesValue, issue.milestone),
         );
       }
     },
