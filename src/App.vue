@@ -236,22 +236,25 @@ export default {
         http.request.delete(deleteUrl).then();
       }
 
+      // Close if issue was moved to
       if (status === 'done') {
         const doneUrl = `${url}?token=${this.token}`;
         http.request.patch(doneUrl, { state: 'closed' }).then();
         return;
       }
 
-      if (status === 'backlog') {
+      // Open if it was in done
+      if (oldStatus === 'done') {
         const doneUrl = `${url}?token=${this.token}`;
         http.request.patch(doneUrl, { state: 'open' }).then();
-        return;
       }
 
-      // Add label
-      const label = _.find(this.labelsOptions, { name: status });
-      const addLabelUrl = `${url}/labels?token=${this.token}`;
-      http.request.post(addLabelUrl, { labels: [label.id] }).then();
+      // Add label of new state if it was not backlog
+      if (status !== 'backlog') {
+        const label = _.find(this.labelsOptions, { name: status });
+        const addLabelUrl = `${url}/labels?token=${this.token}`;
+        http.request.post(addLabelUrl, { labels: [label.id] }).then();
+      }
     },
     showModal(issueId) {
       this.$modal.show(String(issueId));
