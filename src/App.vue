@@ -129,15 +129,14 @@ export default {
   },
   created() {
     const reposUrl = `/repos/search?token=${this.token}&uid=2`;
-    // const reposUrl = `/repos/search?token=${this.token}&uid=2`;
-    // const reposUrl = `/repos/search?token=${this.token}&uid=2`;
     http.request.get(reposUrl).then(
       (response) => {
         this.reposOptions = response.data.data;
 
         _.forEach(this.reposOptions, (repo) => {
+          const repoUrl = `/repos/${repo.full_name}`;
           // Get milestones for each repo and add it to milestonesOptions
-          const milestonesUrl = `/repos/${repo.full_name}/milestones?token=${this.token}`;
+          const milestonesUrl = `${repoUrl}/milestones?token=${this.token}`;
           http.request.get(milestonesUrl).then(
             (milestonesResponse) => {
               _.forEach(milestonesResponse.data, (milestone) => {
@@ -148,7 +147,7 @@ export default {
             });
 
           // Get collaborators for each repo and add it to assigneesOptions
-          const collaboratorsUrl = `/repos/${repo.full_name}/collaborators?token=${this.token}`;
+          const collaboratorsUrl = `${repoUrl}/collaborators?token=${this.token}`;
           http.request.get(collaboratorsUrl).then(
             (collaboratorsResponse) => {
               collaboratorsResponse.data.push(repo.owner);
@@ -160,7 +159,7 @@ export default {
             });
 
           // Get labels of each repo and add it to labelsOptions
-          const labelsUrl = `/repos/${repo.full_name}/labels?token=${this.token}`;
+          const labelsUrl = `${repoUrl}/labels?token=${this.token}`;
           http.request.get(labelsUrl).then(
             (labelsResponse) => {
               _.forEach(labelsResponse.data, (label) => {
@@ -171,7 +170,7 @@ export default {
             });
 
           // Get issues of each repo and add it to issuesOptions
-          const issuesUrl = `/repos/${repo.full_name}/issues?token=${this.token}`;
+          const issuesUrl = `${repoUrl}/issues?state=all&token=${this.token}`;
           http.request.get(issuesUrl).then(
             (issuesResponse) => {
               /* eslint-disable no-param-reassign */
@@ -181,8 +180,10 @@ export default {
                 const labelObj = _.find(issue.labels, label => _.includes(this.stages, label.name));
                 if (labelObj) {
                   issue.status = labelObj.name;
-                } else {
+                } else if (issue.state === 'open') {
                   issue.status = 'backlog';
+                } else {
+                  issue.status = 'done';
                 }
                 this.allIssues.push(issue);
               });
@@ -225,10 +226,32 @@ export default {
       }
     },
     updateIssueStatus(id, status) {
-      const issue = this.issues.find(b => b.id === Number(id));
+      const issue = _.find(this.issues, { id: Number(id) });
+      const oldStatus = issue.status;
       issue.status = status;
-      const url = `/kanban/issues/${issue.id}?token=${this.token}`;
-      http.request.post(url, { status, token: this.token });
+      const url = `/repos/${issue.repo.full_name}/issues/${issue.id}`;
+      if (oldStatus !== 'backlog' && oldStatus !== 'done') {
+        const oldLabelID = _.find(issue.labels, { name: oldStatus }).id;
+        const deleteUrl = `${url}/labels/${oldLabelID}?token=${this.token}`;
+        http.request.delete(deleteUrl).then();
+      }
+
+      if (status === 'done') {
+        const doneUrl = `${url}?token=${this.token}`;
+        http.request.patch(doneUrl, { state: 'closed' }).then();
+        return;
+      }
+
+      if (status === 'backlog') {
+        const doneUrl = `${url}?token=${this.token}`;
+        http.request.patch(doneUrl, { state: 'open' }).then();
+        return;
+      }
+
+      // Add label
+      const label = _.find(this.labelsOptions, { name: status });
+      const addLabelUrl = `${url}/labels?token=${this.token}`;
+      http.request.post(addLabelUrl, { labels: [label.id] }).then();
     },
     showModal(issueId) {
       this.$modal.show(String(issueId));
