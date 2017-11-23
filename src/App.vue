@@ -104,6 +104,10 @@ export default {
   },
   created() {
     const reposUrl = `/repos/search?token=${this.token}&uid=2`;
+    const stagesQuery = this.$route.query.stages;
+    if (!_.isEmpty(stagesQuery)) {
+      this.stages = _.split([stagesQuery], ',');
+    }
     http.request.get(reposUrl).then(
       (response) => {
         this.reposOptions = response.data.data;
