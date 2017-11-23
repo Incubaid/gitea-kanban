@@ -3,11 +3,9 @@
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-vue/dist/bootstrap-vue.css';
 import Vue from 'vue';
-import VModal from 'vue-js-modal';
 import BootstrapVue from 'bootstrap-vue';
 import App from './App';
 
-Vue.use(VModal);
 Vue.use(BootstrapVue);
 
 

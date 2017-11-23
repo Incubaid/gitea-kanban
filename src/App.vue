@@ -47,24 +47,6 @@
     <br/>
     <Kanban :stages="stages" :blocks="issues" @update-block="updateIssueStatus">
       <div v-for="issue in issues" :slot="issue.id" :key="issue.id">
-        <modal :name="String(issue.id)" :resizable="true" :draggable="true" :scrollable="true">
-          <div class="container" style="background-color:grey">
-            <div class="row">
-              <div class="col-md-9">
-                <div class="card-item-header">
-                  <a :href="'http://localhost:3000/' + issue.user.login">{{issue.user.login}}</a>
-                  <span> opened this issue on: {{issue.created_at}}</span>
-                </div>
-                <div class="card-item-body">
-                  {{ issue.body }}
-                </div>
-              </div>
-              <div class="col-md-3">
-
-              </div>
-            </div>
-          </div>
-        </modal>
         <div v-if="issue.assignee">
           <a href="javascript:void(0)">
             <span class="badge badge-secondary" v-on:click="showModal(issue.id)">#{{issue.id}}</span>
@@ -85,11 +67,6 @@
           <a class="badge badge-secondary" :href="issue.url.replace('/api/v1/repos', '')" target="_blank">
             <span class="glyphicon glyphicon-link"></span>
           </a>
-          <a href="javascript:void(0)">
-            <span class="badge badge-secondary" v-on:click="showModal(issue.id)">
-              <span class="glyphicon glyphicon-comment"> {{issue.comments}}</span>
-            </span>
-          </a>
         </div>
 
       </div>
@@ -100,7 +77,6 @@
 <script>
 import _ from 'lodash';
 import Multiselect from 'vue-multiselect';
-import VModal from 'vue-js-modal';
 import http from './http-common';
 import Kanban from './components/Kanban';
 
@@ -109,7 +85,6 @@ export default {
   components: {
     Kanban,
     Multiselect,
-    VModal,
   },
   data() {
     return {
