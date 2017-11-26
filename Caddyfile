@@ -1,0 +1,17 @@
+http://localhost:8000 {
+    bind 0.0.0.0
+
+    proxy / http://localhost:8080
+
+    oauth {
+        client_id       orgXXXX
+        client_secret	f8G3fX9_4fIhfjxUjZrvFTPrObowRuL1i4iWnlXXXXXXXXXXX
+        auth_url        https://itsyou.online/v1/oauth/authorize
+        token_url       https://itsyou.online/v1/oauth/access_token
+        jwt_url         https://itsyou.online/v1/oauth/jwt
+        redirect_url    http://localhost:8000/oauth/callback
+        authentication_required /
+        extra_scopes   user:name,user:email
+        base_api_path /api
+    }
+}

@@ -3,12 +3,14 @@
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-vue/dist/bootstrap-vue.css';
 import Vue from 'vue';
+import VueCookie from 'vue-cookie';
 import VModal from 'vue-js-modal';
 import BootstrapVue from 'bootstrap-vue';
 import App from './App';
 
 Vue.use(VModal);
 Vue.use(BootstrapVue);
+Vue.use(VueCookie);
 
 
 Vue.config.productionTip = false;

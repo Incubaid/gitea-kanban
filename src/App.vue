@@ -1,5 +1,10 @@
 <template>
   <div id="app">
+    <b-alert variant="danger" dismissible :show="showAlert" @dismissed="showAlert=false">
+      <h4 class="alert-heading">Auth Error!</h4>
+      {{authErrorMsg}}
+    </b-alert>
+    <div class="loader" v-show="loaderShow"></div>
     <section class="section container">
       <div class="row">
         <div class="col-md-3">
@@ -116,7 +121,6 @@ export default {
       stages: ['backlog', 'in-progress', 'question', 'validation', 'done'],
       issues: [], // Show issues on board
       allIssues: [], // All issues user can access
-      token: 'f48b0e812b76f52e36cc04178308ad8c763f40f2',
       reposValue: [],
       reposOptions: [],
       milestonesValue: [],
@@ -125,75 +129,35 @@ export default {
       labelsOptions: [],
       assigneesValue: [],
       assigneesOptions: [],
+      showAlert: false,
+      loaderShow: true,
+      authErrorMsg: 'You must login with itsyou.online firstly.',
     };
   },
   created() {
-    const reposUrl = `/repos/search?token=${this.token}&uid=2`;
-    // const reposUrl = `/repos/search?token=${this.token}&uid=2`;
-    // const reposUrl = `/repos/search?token=${this.token}&uid=2`;
-    http.request.get(reposUrl).then(
-      (response) => {
-        this.reposOptions = response.data.data;
-
-        _.forEach(this.reposOptions, (repo) => {
-          // Get milestones for each repo and add it to milestonesOptions
-          const milestonesUrl = `/repos/${repo.full_name}/milestones?token=${this.token}`;
-          http.request.get(milestonesUrl).then(
-            (milestonesResponse) => {
-              _.forEach(milestonesResponse.data, (milestone) => {
-                if (!_.find(this.milestonesOptions, { title: milestone.title })) {
-                  this.milestonesOptions.push(milestone);
-                }
-              });
-            });
-
-          // Get collaborators for each repo and add it to assigneesOptions
-          const collaboratorsUrl = `/repos/${repo.full_name}/collaborators?token=${this.token}`;
-          http.request.get(collaboratorsUrl).then(
-            (collaboratorsResponse) => {
-              collaboratorsResponse.data.push(repo.owner);
-              _.forEach(collaboratorsResponse.data, (collaborator) => {
-                if (!_.find(this.assigneesOptions, { id: collaborator.id })) {
-                  this.assigneesOptions.push(collaborator);
-                }
-              });
-            });
-
-          // Get labels of each repo and add it to labelsOptions
-          const labelsUrl = `/repos/${repo.full_name}/labels?token=${this.token}`;
-          http.request.get(labelsUrl).then(
-            (labelsResponse) => {
-              _.forEach(labelsResponse.data, (label) => {
-                if (!_.find(this.labelsOptions, { title: label.title })) {
-                  this.labelsOptions.push(label);
-                }
-              });
-            });
-
-          // Get issues of each repo and add it to issuesOptions
-          const issuesUrl = `/repos/${repo.full_name}/issues?token=${this.token}`;
-          http.request.get(issuesUrl).then(
-            (issuesResponse) => {
-              /* eslint-disable no-param-reassign */
-              _.forEach(issuesResponse.data, (issue) => {
-                // Set repo and status on all issues
-                issue.repo = repo;
-                const labelObj = _.find(issue.labels, label => _.includes(this.stages, label.name));
-                if (labelObj) {
-                  issue.status = labelObj.name;
-                } else {
-                  issue.status = 'backlog';
-                }
-                this.allIssues.push(issue);
-              });
-              // Update the issues
-              this.updateIssues();
-            });
-        });
-      });
+    const jwt = this.$cookie.get('caddyoauth');
+    if (jwt) {
+      http.request.post('/token-by-jwt', { jwt }).then(
+        (response) => {
+          this.token = response.data.sha1;
+          const reposUrl = `/repos/search?token=${this.token}`;
+          http.request.get(reposUrl).then(this.getKanbanData);
+        },
+      ).catch(
+        (error) => {
+          this.loaderShow = false;
+          this.showAlert = true;
+          this.authErrorMsg = error.response.data.message;
+        },
+      );
+    } else {
+      this.loaderShow = false;
+      this.showAlert = true;
+    }
   },
   methods: {
     updateIssues() {
+      this.loaderShow = false;
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
 
@@ -232,6 +196,65 @@ export default {
     },
     showModal(issueId) {
       this.$modal.show(String(issueId));
+    },
+    getKanbanData(response) {
+      this.reposOptions = response.data.data;
+
+      _.forEach(this.reposOptions, (repo) => {
+        // Get milestones for each repo and add it to milestonesOptions
+        const milestonesUrl = `/repos/${repo.full_name}/milestones?token=${this.token}`;
+        http.request.get(milestonesUrl).then(
+          (milestonesResponse) => {
+            _.forEach(milestonesResponse.data, (milestone) => {
+              if (!_.find(this.milestonesOptions, { title: milestone.title })) {
+                this.milestonesOptions.push(milestone);
+              }
+            });
+          });
+
+        // Get collaborators for each repo and add it to assigneesOptions
+        const collaboratorsUrl = `/repos/${repo.full_name}/collaborators?token=${this.token}`;
+        http.request.get(collaboratorsUrl).then(
+          (collaboratorsResponse) => {
+            collaboratorsResponse.data.push(repo.owner);
+            _.forEach(collaboratorsResponse.data, (collaborator) => {
+              if (!_.find(this.assigneesOptions, { id: collaborator.id })) {
+                this.assigneesOptions.push(collaborator);
+              }
+            });
+          });
+
+        // Get labels of each repo and add it to labelsOptions
+        const labelsUrl = `/repos/${repo.full_name}/labels?token=${this.token}`;
+        http.request.get(labelsUrl).then(
+          (labelsResponse) => {
+            _.forEach(labelsResponse.data, (label) => {
+              if (!_.find(this.labelsOptions, { title: label.title })) {
+                this.labelsOptions.push(label);
+              }
+            });
+          });
+
+        // Get issues of each repo and add it to issuesOptions
+        const issuesUrl = `/repos/${repo.full_name}/issues?token=${this.token}`;
+        http.request.get(issuesUrl).then(
+          (issuesResponse) => {
+            /* eslint-disable no-param-reassign */
+            _.forEach(issuesResponse.data, (issue) => {
+              // Set repo and status on all issues
+              issue.repo = repo;
+              const labelObj = _.find(issue.labels, label => _.includes(this.stages, label.name));
+              if (labelObj) {
+                issue.status = labelObj.name;
+              } else {
+                issue.status = 'backlog';
+              }
+              this.allIssues.push(issue);
+            });
+            // Update the issues
+            this.updateIssues();
+          });
+      });
     },
   },
 };
@@ -333,5 +356,40 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   float: left;
+}
+
+.loader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 150px;
+  height: 150px;
+  margin: -75px 0 0 -75px;
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid #3498db;
+  width: 120px;
+  height: 120px;
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+}
+
+@-webkit-keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
