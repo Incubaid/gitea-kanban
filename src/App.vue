@@ -103,30 +103,11 @@ export default {
       labelsOptions: [],
       assigneesValue: [],
       assigneesOptions: [],
-      showAlert: false,
-      loaderShow: true,
-      authErrorMsg: 'You must login with itsyou.online firstly.',
     };
   },
   created() {
-    const jwt = this.$cookie.get('caddyoauth');
-    if (jwt) {
-      http.request.post('/token-by-jwt', { jwt }).then(
-        (response) => {
-          this.token = response.data.sha1;
-          this.getKanbanData();
-        },
-      ).catch(
-        (error) => {
-          this.loaderShow = false;
-          this.showAlert = true;
-          this.authErrorMsg = error.response.data.message;
-        },
-      );
-    } else {
-      this.loaderShow = false;
-      this.showAlert = true;
-    }
+    this.token = 'f48b0e812b76f52e36cc04178308ad8c763f40f2';
+    this.getKanbanData();
   },
   methods: {
     updateIssues() {
