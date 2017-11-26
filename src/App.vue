@@ -1,10 +1,5 @@
 <template>
   <div id="app">
-    <b-alert variant="danger" dismissible :show="showAlert" @dismissed="showAlert=false">
-      <h4 class="alert-heading">Auth Error!</h4>
-      {{authErrorMsg}}
-    </b-alert>
-    <div class="loader" v-show="loaderShow"></div>
     <section class="section container">
       <div class="row">
         <div class="col-md-3">
@@ -111,13 +106,13 @@ export default {
   },
   methods: {
     updateIssues() {
-      this.loaderShow = false;
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
 
       // update issues based on the repo filter if provided
       if (this.reposValue.length > 0) {
         this.issues = _.filter(this.issues, issue => _.some(this.reposValue, issue.repo));
+        this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
       }
 
       // update issues based on the assignee filter if provided
@@ -189,27 +184,19 @@ export default {
       this.$modal.show(String(issueId));
     },
     getKanbanData() {
-      const reposUrl = `/repos/search?token=${this.token}`;
-      // FIXME: move to bottom
+      const reposUrl = `/repos/search?token=${this.token}&uid=2`;
+
+      // add assignees to url
       const stagesQuery = this.$route.query.stages;
       if (!_.isEmpty(stagesQuery)) {
         this.stages = _.split([stagesQuery], ',');
       } else {
-        // add assignees to url
-        // this.$router.push({
-        //   query: Object.assign({}, this.$route.query, { stages: _.join(this.stages) }),
-        // });
         this.updateUrl({ stages: _.join(this.stages) });
       }
-      // // Set filter values if found
-      // const assigneesQuery = this.$route.query.assignees;
-      // if (!_.isEmpty(assigneesQuery)) {
-      //   this.assigneesValue = _.split([assigneesQuery], ',');
-      // }
+
       http.request.get(reposUrl).then(
         (response) => {
           this.reposOptions = response.data.data;
-
           _.forEach(this.reposOptions, (repo) => {
             const repoUrl = `/repos/${repo.full_name}`;
             // Get milestones for each repo and add it to milestonesOptions
@@ -267,10 +254,41 @@ export default {
                   this.allIssues.push(issue);
                 });
                 // Update the issues
+                this.updateFilters();
                 this.updateIssues();
               });
           });
         });
+    },
+    updateFilters() {
+      // update assignee filters
+      const assigneesQuery = _.split(this.$route.query.assignees);
+      if (!_.isEmpty(assigneesQuery)) {
+        this.assigneesValue = _.filter(this.assigneesOptions, assignee =>
+          _.includes(assigneesQuery, assignee.login),
+        );
+      }
+      // update milestone filters
+      const milestonesQuery = _.split(this.$route.query.milestones);
+      if (!_.isEmpty(milestonesQuery)) {
+        this.milestonesValue = _.filter(this.milestonesOptions, milestone =>
+          _.includes(milestonesQuery, milestone.title),
+        );
+      }
+      // update label filters
+      const labelsQuery = _.split(this.$route.query.labels);
+      if (!_.isEmpty(labelsQuery)) {
+        this.labelsValue = _.filter(this.labelsOptions, label =>
+          _.includes(labelsQuery, label.name),
+        );
+      }
+      // update repo filters
+      const reposQuery = _.split(this.$route.query.repos);
+      if (!_.isEmpty(reposQuery)) {
+        this.reposValue = _.filter(this.reposOptions, repo =>
+          _.includes(reposQuery, repo.full_name),
+        );
+      }
     },
   },
 };
