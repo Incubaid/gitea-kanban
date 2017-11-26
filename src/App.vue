@@ -52,24 +52,6 @@
     <br/>
     <Kanban :stages="stages" :blocks="issues" @update-block="updateIssueStatus">
       <div v-for="issue in issues" :slot="issue.id" :key="issue.id">
-        <modal :name="String(issue.id)" :resizable="true" :draggable="true" :scrollable="true">
-          <div class="container" style="background-color:grey">
-            <div class="row">
-              <div class="col-md-9">
-                <div class="card-item-header">
-                  <a :href="'http://localhost:3000/' + issue.user.login">{{issue.user.login}}</a>
-                  <span> opened this issue on: {{issue.created_at}}</span>
-                </div>
-                <div class="card-item-body">
-                  {{ issue.body }}
-                </div>
-              </div>
-              <div class="col-md-3">
-
-              </div>
-            </div>
-          </div>
-        </modal>
         <div v-if="issue.assignee">
           <a href="javascript:void(0)">
             <span class="badge badge-secondary" v-on:click="showModal(issue.id)">#{{issue.id}}</span>
@@ -90,11 +72,6 @@
           <a class="badge badge-secondary" :href="issue.url.replace('/api/v1/repos', '')" target="_blank">
             <span class="glyphicon glyphicon-link"></span>
           </a>
-          <a href="javascript:void(0)">
-            <span class="badge badge-secondary" v-on:click="showModal(issue.id)">
-              <span class="glyphicon glyphicon-comment"> {{issue.comments}}</span>
-            </span>
-          </a>
         </div>
 
       </div>
@@ -105,7 +82,6 @@
 <script>
 import _ from 'lodash';
 import Multiselect from 'vue-multiselect';
-import VModal from 'vue-js-modal';
 import http from './http-common';
 import Kanban from './components/Kanban';
 
@@ -114,7 +90,6 @@ export default {
   components: {
     Kanban,
     Multiselect,
-    VModal,
   },
   data() {
     return {
@@ -140,8 +115,7 @@ export default {
       http.request.post('/token-by-jwt', { jwt }).then(
         (response) => {
           this.token = response.data.sha1;
-          const reposUrl = `/repos/search?token=${this.token}`;
-          http.request.get(reposUrl).then(this.getKanbanData);
+          this.getKanbanData();
         },
       ).catch(
         (error) => {
@@ -189,72 +163,110 @@ export default {
       }
     },
     updateIssueStatus(id, status) {
-      const issue = this.issues.find(b => b.id === Number(id));
+      const issue = _.find(this.issues, { id: Number(id) });
+      const oldStatus = issue.status;
       issue.status = status;
-      const url = `/kanban/issues/${issue.id}?token=${this.token}`;
-      http.request.post(url, { status, token: this.token });
+      const url = `/repos/${issue.repo.full_name}/issues/${issue.id}`;
+      if (oldStatus !== 'backlog' && oldStatus !== 'done') {
+        const oldLabelID = _.find(issue.labels, { name: oldStatus }).id;
+        const deleteUrl = `${url}/labels/${oldLabelID}?token=${this.token}`;
+        http.request.delete(deleteUrl).then();
+      }
+
+      // Close if issue was moved to
+      if (status === 'done') {
+        const doneUrl = `${url}?token=${this.token}`;
+        http.request.patch(doneUrl, { state: 'closed' }).then();
+        return;
+      }
+
+      // Open if it was in done
+      if (oldStatus === 'done') {
+        const doneUrl = `${url}?token=${this.token}`;
+        http.request.patch(doneUrl, { state: 'open' }).then();
+      }
+
+      // Add label of new state if it was not backlog
+      if (status !== 'backlog') {
+        const label = _.find(this.labelsOptions, { name: status });
+        const addLabelUrl = `${url}/labels?token=${this.token}`;
+        http.request.post(addLabelUrl, { labels: [label.id] }).then();
+      }
     },
     showModal(issueId) {
       this.$modal.show(String(issueId));
     },
-    getKanbanData(response) {
-      this.reposOptions = response.data.data;
+    getKanbanData() {
+      const reposUrl = `/repos/search?token=${this.token}`;
+      const stagesQuery = this.$route.query.stages;
+      if (!_.isEmpty(stagesQuery)) {
+        this.stages = _.split([stagesQuery], ',');
+      }
+      http.request.get(reposUrl).then(
+        (response) => {
+          this.reposOptions = response.data.data;
 
-      _.forEach(this.reposOptions, (repo) => {
-        // Get milestones for each repo and add it to milestonesOptions
-        const milestonesUrl = `/repos/${repo.full_name}/milestones?token=${this.token}`;
-        http.request.get(milestonesUrl).then(
-          (milestonesResponse) => {
-            _.forEach(milestonesResponse.data, (milestone) => {
-              if (!_.find(this.milestonesOptions, { title: milestone.title })) {
-                this.milestonesOptions.push(milestone);
-              }
-            });
-          });
+          _.forEach(this.reposOptions, (repo) => {
+            const repoUrl = `/repos/${repo.full_name}`;
+            // Get milestones for each repo and add it to milestonesOptions
+            const milestonesUrl = `${repoUrl}/milestones?token=${this.token}`;
+            http.request.get(milestonesUrl).then(
+              (milestonesResponse) => {
+                _.forEach(milestonesResponse.data, (milestone) => {
+                  if (!_.find(this.milestonesOptions, { title: milestone.title })) {
+                    this.milestonesOptions.push(milestone);
+                  }
+                });
+              });
 
-        // Get collaborators for each repo and add it to assigneesOptions
-        const collaboratorsUrl = `/repos/${repo.full_name}/collaborators?token=${this.token}`;
-        http.request.get(collaboratorsUrl).then(
-          (collaboratorsResponse) => {
-            collaboratorsResponse.data.push(repo.owner);
-            _.forEach(collaboratorsResponse.data, (collaborator) => {
-              if (!_.find(this.assigneesOptions, { id: collaborator.id })) {
-                this.assigneesOptions.push(collaborator);
-              }
-            });
-          });
+            // Get collaborators for each repo and add it to assigneesOptions
+            const collaboratorsUrl = `${repoUrl}/collaborators?token=${this.token}`;
+            http.request.get(collaboratorsUrl).then(
+              (collaboratorsResponse) => {
+                collaboratorsResponse.data.push(repo.owner);
+                _.forEach(collaboratorsResponse.data, (collaborator) => {
+                  if (!_.find(this.assigneesOptions, { id: collaborator.id })) {
+                    this.assigneesOptions.push(collaborator);
+                  }
+                });
+              });
 
-        // Get labels of each repo and add it to labelsOptions
-        const labelsUrl = `/repos/${repo.full_name}/labels?token=${this.token}`;
-        http.request.get(labelsUrl).then(
-          (labelsResponse) => {
-            _.forEach(labelsResponse.data, (label) => {
-              if (!_.find(this.labelsOptions, { title: label.title })) {
-                this.labelsOptions.push(label);
-              }
-            });
-          });
+            // Get labels of each repo and add it to labelsOptions
+            const labelsUrl = `${repoUrl}/labels?token=${this.token}`;
+            http.request.get(labelsUrl).then(
+              (labelsResponse) => {
+                _.forEach(labelsResponse.data, (label) => {
+                  if (!_.find(this.labelsOptions, { title: label.title })) {
+                    this.labelsOptions.push(label);
+                  }
+                });
+              });
 
-        // Get issues of each repo and add it to issuesOptions
-        const issuesUrl = `/repos/${repo.full_name}/issues?token=${this.token}`;
-        http.request.get(issuesUrl).then(
-          (issuesResponse) => {
-            /* eslint-disable no-param-reassign */
-            _.forEach(issuesResponse.data, (issue) => {
-              // Set repo and status on all issues
-              issue.repo = repo;
-              const labelObj = _.find(issue.labels, label => _.includes(this.stages, label.name));
-              if (labelObj) {
-                issue.status = labelObj.name;
-              } else {
-                issue.status = 'backlog';
-              }
-              this.allIssues.push(issue);
-            });
-            // Update the issues
-            this.updateIssues();
+            // Get issues of each repo and add it to issuesOptions
+            const issuesUrl = `${repoUrl}/issues?state=all&token=${this.token}`;
+            http.request.get(issuesUrl).then(
+              (issuesResponse) => {
+                /* eslint-disable no-param-reassign */
+                _.forEach(issuesResponse.data, (issue) => {
+                  // Set repo and status on all issues
+                  issue.repo = repo;
+                  const labelObj = _.find(
+                    issue.labels, label => _.includes(this.stages, label.name),
+                  );
+                  if (labelObj) {
+                    issue.status = labelObj.name;
+                  } else if (issue.state === 'open') {
+                    issue.status = 'backlog';
+                  } else {
+                    issue.status = 'done';
+                  }
+                  this.allIssues.push(issue);
+                });
+                // Update the issues
+                this.updateIssues();
+              });
           });
-      });
+        });
     },
   },
 };
