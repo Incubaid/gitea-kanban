@@ -63,7 +63,6 @@
         </div>
         <div class="issue-tag" v-if="issue.assignee">
           {{ issue.milestone.title }}
-          1.1.0
         </div>
         <div v-for="label in issue.labels" :key="label.title" class="issue-tag" :style="{ backgroundColor: '#'+label.color}" v-if="!stages.includes(label.name)">
           <span>{{label.name}}</span>
@@ -146,6 +145,9 @@ export default {
           const assigned = !_.isEmpty(issue.assignee);
           return assigned && _.some(this.assigneesValue, issue.assignee);
         });
+
+        // add assignees to url
+        this.updateUrl({ assignees: _.map(this.assigneesValue, 'username').join() });
       }
 
       // update issues based on the label filter if provided
@@ -153,6 +155,8 @@ export default {
         this.issues = _.filter(this.issues, issue =>
           !_.isEmpty(_.intersectionBy(this.labelsValue, issue.labels, 'id')),
         );
+        // add labels to url
+        this.updateUrl({ labels: _.map(this.labelsValue, 'name').join() });
       }
 
       // update issues based on the milestones filter if provided
@@ -160,6 +164,8 @@ export default {
         this.issues = _.filter(this.issues, issue =>
           !_.isEmpty(issue.milestone) && _.some(this.milestonesValue, issue.milestone),
         );
+        // add milestones to url
+        this.updateUrl({ milestones: _.map(this.milestonesValue, 'title').join() });
       }
     },
     updateIssueStatus(id, status) {
@@ -193,15 +199,32 @@ export default {
         http.request.post(addLabelUrl, { labels: [label.id] }).then();
       }
     },
+    updateUrl(queryObject) {
+      this.$router.push({
+        query: Object.assign({}, this.$route.query, queryObject),
+      });
+    },
     showModal(issueId) {
       this.$modal.show(String(issueId));
     },
     getKanbanData() {
       const reposUrl = `/repos/search?token=${this.token}`;
+      // FIXME: move to bottom
       const stagesQuery = this.$route.query.stages;
       if (!_.isEmpty(stagesQuery)) {
         this.stages = _.split([stagesQuery], ',');
+      } else {
+        // add assignees to url
+        // this.$router.push({
+        //   query: Object.assign({}, this.$route.query, { stages: _.join(this.stages) }),
+        // });
+        this.updateUrl({ stages: _.join(this.stages) });
       }
+      // // Set filter values if found
+      // const assigneesQuery = this.$route.query.assignees;
+      // if (!_.isEmpty(assigneesQuery)) {
+      //   this.assigneesValue = _.split([assigneesQuery], ',');
+      // }
       http.request.get(reposUrl).then(
         (response) => {
           this.reposOptions = response.data.data;
@@ -274,7 +297,6 @@ export default {
 
 <style lang="scss">
 @import './assets/kanban.scss';
-
 
 $backlog: Grey;
 $in-progress: #2A92BF;
