@@ -63,7 +63,7 @@
           <span>{{label.name}}</span>
         </div><br/>
         <div class="text-right">
-          <a class="badge badge-secondary" :href="issue.url.replace('/api/v1/repos', '')" target="_blank">
+          <a class="badge badge-secondary" :href="issue.url.replace('/api/v1/repos', '').replace(/.$/, issue.number)" target="_blank">
             <span class="glyphicon glyphicon-link"></span>
           </a>
         </div>
@@ -148,7 +148,7 @@ export default {
       const issue = _.find(this.issues, { id: Number(id) });
       const oldStatus = issue.status;
       issue.status = status;
-      const url = `/repos/${issue.repo.full_name}/issues/${issue.id}`;
+      const url = `/repos/${issue.repo.full_name}/issues/${issue.number}`;
       if (oldStatus !== 'backlog' && oldStatus !== 'done') {
         const oldLabelID = _.find(issue.labels, { name: oldStatus }).id;
         const deleteUrl = `${url}/labels/${oldLabelID}?token=${this.token}`;
