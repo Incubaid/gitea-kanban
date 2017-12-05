@@ -114,6 +114,8 @@ export default {
         this.issues = _.filter(this.issues, issue => _.some(this.reposValue, issue.repo));
         this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
       }
+      this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
+
 
       // update issues based on the assignee filter if provided
       if (this.assigneesValue.length > 0) {
@@ -121,28 +123,27 @@ export default {
           const assigned = !_.isEmpty(issue.assignee);
           return assigned && _.some(this.assigneesValue, issue.assignee);
         });
-
-        // add assignees to url
-        this.updateUrl({ assignees: _.map(this.assigneesValue, 'username').join() });
       }
+      // add assignees to url
+      this.updateUrl({ assignees: _.map(this.assigneesValue, 'username').join() });
 
       // update issues based on the label filter if provided
       if (this.labelsValue.length > 0) {
         this.issues = _.filter(this.issues, issue =>
           !_.isEmpty(_.intersectionBy(this.labelsValue, issue.labels, 'id')),
         );
-        // add labels to url
-        this.updateUrl({ labels: _.map(this.labelsValue, 'name').join() });
       }
+      // add labels to url
+      this.updateUrl({ labels: _.map(this.labelsValue, 'name').join() });
 
       // update issues based on the milestones filter if provided
       if (this.milestonesValue.length > 0) {
         this.issues = _.filter(this.issues, issue =>
           !_.isEmpty(issue.milestone) && _.some(this.milestonesValue, issue.milestone),
         );
-        // add milestones to url
-        this.updateUrl({ milestones: _.map(this.milestonesValue, 'title').join() });
       }
+      // add milestones to url
+      this.updateUrl({ milestones: _.map(this.milestonesValue, 'title').join() });
     },
     updateIssueStatus(id, status) {
       const issue = _.find(this.issues, { id: Number(id) });
