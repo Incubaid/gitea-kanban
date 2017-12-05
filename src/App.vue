@@ -56,14 +56,14 @@
         <div>
           <strong>{{ issue.title }}</strong>
         </div>
-        <div class="issue-tag" v-if="issue.assignee">
+        <div class="issue-tag" v-if="issue.milestone">
           {{ issue.milestone.title }}
         </div>
         <div v-for="label in issue.labels" :key="label.title" class="issue-tag" :style="{ backgroundColor: '#'+label.color}" v-if="!stages.includes(label.name)">
           <span>{{label.name}}</span>
         </div><br/>
         <div class="text-right">
-          <a class="badge badge-secondary" :href="issue.url.replace('/api/v1/repos', '').replace(/.$/, issue.number)" target="_blank">
+          <a class="badge badge-secondary" :href="issue.url" target="_blank">
             <span class="glyphicon glyphicon-link"></span>
           </a>
         </div>
@@ -239,6 +239,12 @@ export default {
               (issuesResponse) => {
                 /* eslint-disable no-param-reassign */
                 _.forEach(issuesResponse.data, (issue) => {
+                  // Change issue url to gitea url
+                  let splittedUrl = _.split(issue.url, '/');
+                  splittedUrl = _.slice(splittedUrl, 0, splittedUrl.length - 1);
+                  splittedUrl.push(issue.number);
+                  issue.url = _.replace(_.join(splittedUrl, '/'), '/api/v1/repos', '');
+
                   // Set repo and status on all issues
                   issue.repo = repo;
                   const labelObj = _.find(
