@@ -1,5 +1,10 @@
 <template>
   <div id="app">
+    <b-alert variant="danger" dismissible :show="showAlert" @dismissed="showAlert=false">
+      <h4 class="alert-heading">Auth Error!</h4>
+      {{authErrorMsg}}
+    </b-alert>
+    <div class="loader" v-show="loaderShow"></div>
     <section class="section container">
       <div class="row">
         <div class="col-md-3">
@@ -98,14 +103,34 @@ export default {
       assigneesValue: [],
       assigneesOptions: [],
       repoLabels: {},  // example: {sample-repo: LabelObject}, used to add/remove labels
+      showAlert: false,
+      loaderShow: true,
+      authErrorMsg: 'You must login with itsyou.online firstly.',
     };
   },
   created() {
-    this.token = '<GITEA_TOKEN>';
-    this.getKanbanData();
+    const jwt = this.$cookie.get('caddyoauth');
+    if (jwt) {
+      http.request.post('/token-by-jwt', { jwt }).then(
+        (response) => {
+          this.token = response.data.sha1;
+          this.getKanbanData();
+        },
+      ).catch(
+        (error) => {
+          this.loaderShow = false;
+          this.showAlert = true;
+          this.authErrorMsg = error.response.data.message;
+        },
+      );
+    } else {
+      this.loaderShow = false;
+      this.showAlert = true;
+    }
   },
   methods: {
     updateIssues() {
+      this.loaderShow = false;
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
       // update issues based on the repo filter if provided
