@@ -98,8 +98,7 @@ export default {
     };
   },
   created() {
-    // this.token = 'f48b0e812b76f52e36cc04178308ad8c763f40f2';
-    this.token = '99159e397d31653a33a804483112b1cbb171c7cd';
+    this.token = '<Gitea Token>';
     this.getKanbanData();
   },
   methods: {
@@ -203,7 +202,7 @@ export default {
               });
 
             // Get collaborators for each repo and add it to assigneesOptions
-            const collaboratorsUrl = `${repoUrl}/collaborators?token=${this.token}`;
+            const collaboratorsUrl = `${repoUrl}/collaborators?token=${this.token}&limit=1000`;
             http.request.get(collaboratorsUrl).then(
               (collaboratorsResponse) => {
                 collaboratorsResponse.data.push(repo.owner);
@@ -216,7 +215,7 @@ export default {
               });
 
             // Get labels of each repo and add it to labelsOptions
-            const labelsUrl = `${repoUrl}/labels?token=${this.token}`;
+            const labelsUrl = `${repoUrl}/labels?token=${this.token}&limit=1000`;
             http.request.get(labelsUrl).then(
               (labelsResponse) => {
                 this.repoLabels[repo.full_name] = labelsResponse.data;
