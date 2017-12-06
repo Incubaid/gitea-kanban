@@ -48,9 +48,6 @@
     <Kanban :stages="stages" :blocks="issues" @update-block="updateIssueStatus">
       <div v-for="issue in issues" :slot="issue.id" :key="issue.id">
         <div v-if="issue.assignee">
-          <a href="javascript:void(0)">
-            <span class="badge badge-secondary" v-on:click="showModal(issue.id)">#{{issue.id}}</span>
-          </a>
           <img class="avatar img-rounded" :src="issue.assignee.avatar_url" />
         </div>
         <div>
@@ -67,7 +64,6 @@
             <span class="glyphicon glyphicon-link"></span>
           </a>
         </div>
-
       </div>
     </Kanban>
   </div>
@@ -98,6 +94,7 @@ export default {
       labelsOptions: [],
       assigneesValue: [],
       assigneesOptions: [],
+      repoLabels: {},  // example: {sample-repo: LabelObject}, used to add/remove labels
     };
   },
   created() {
@@ -171,7 +168,7 @@ export default {
 
       // Add label of new state if it was not backlog
       if (status !== 'backlog') {
-        const label = _.find(this.labelsOptions, { name: status });
+        const label = _.find(this.repoLabels[issue.repo.full_name], { name: status });
         const addLabelUrl = `${url}/labels?token=${this.token}`;
         http.request.post(addLabelUrl, { labels: [label.id] }).then();
       }
@@ -180,9 +177,6 @@ export default {
       this.$router.push({
         query: Object.assign({}, this.$route.query, queryObject),
       });
-    },
-    showModal(issueId) {
-      this.$modal.show(String(issueId));
     },
     getKanbanData() {
       const reposUrl = `/repos/search?token=${this.token}&uid=2`;
@@ -204,7 +198,7 @@ export default {
             const milestonesUrl = `${repoUrl}/milestones?token=${this.token}`;
             http.request.get(milestonesUrl).then(
               (milestonesResponse) => {
-                this.milestonesOptions = _.uniqBy(milestonesResponse.data, 'title');
+                this.milestonesOptions = _.union(this.milestonesOptions, _.uniqBy(milestonesResponse.data, 'title'));
               });
 
             // Get collaborators for each repo and add it to assigneesOptions
@@ -223,6 +217,7 @@ export default {
             const labelsUrl = `${repoUrl}/labels?token=${this.token}`;
             http.request.get(labelsUrl).then(
               (labelsResponse) => {
+                this.repoLabels[repo.full_name] = labelsResponse.data;
                 this.labelsOptions = _.uniqBy(labelsResponse.data, 'name');
               });
 
