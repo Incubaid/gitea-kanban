@@ -204,11 +204,7 @@ export default {
             const milestonesUrl = `${repoUrl}/milestones?token=${this.token}`;
             http.request.get(milestonesUrl).then(
               (milestonesResponse) => {
-                _.forEach(milestonesResponse.data, (milestone) => {
-                  if (!_.find(this.milestonesOptions, { title: milestone.title })) {
-                    this.milestonesOptions.push(milestone);
-                  }
-                });
+                this.milestonesOptions = _.uniqBy(milestonesResponse.data, 'title');
               });
 
             // Get collaborators for each repo and add it to assigneesOptions
@@ -216,22 +212,18 @@ export default {
             http.request.get(collaboratorsUrl).then(
               (collaboratorsResponse) => {
                 collaboratorsResponse.data.push(repo.owner);
-                _.forEach(collaboratorsResponse.data, (collaborator) => {
-                  if (!_.find(this.assigneesOptions, { id: collaborator.id })) {
-                    this.assigneesOptions.push(collaborator);
-                  }
-                });
+                this.assigneesOptions = _
+                  .chain(collaboratorsResponse.data)
+                  .filter(collaborator => collaborator.email)
+                  .uniqBy('id')
+                  .value();
               });
 
             // Get labels of each repo and add it to labelsOptions
             const labelsUrl = `${repoUrl}/labels?token=${this.token}`;
             http.request.get(labelsUrl).then(
               (labelsResponse) => {
-                _.forEach(labelsResponse.data, (label) => {
-                  if (!_.find(this.labelsOptions, { title: label.title })) {
-                    this.labelsOptions.push(label);
-                  }
-                });
+                this.labelsOptions = _.uniqBy(labelsResponse.data, 'name');
               });
 
             // Get issues of each repo and add it to issuesOptions
