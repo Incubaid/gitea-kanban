@@ -98,7 +98,8 @@ export default {
     };
   },
   created() {
-    this.token = 'f48b0e812b76f52e36cc04178308ad8c763f40f2';
+    // this.token = 'f48b0e812b76f52e36cc04178308ad8c763f40f2';
+    this.token = '99159e397d31653a33a804483112b1cbb171c7cd';
     this.getKanbanData();
   },
   methods: {
@@ -179,7 +180,7 @@ export default {
       });
     },
     getKanbanData() {
-      const reposUrl = `/repos/search?token=${this.token}&uid=2`;
+      const reposUrl = `/repos/search?token=${this.token}&limit=1000`;
 
       // add assignees to url
       const stagesQuery = this.$route.query.stages;
@@ -209,6 +210,7 @@ export default {
                 this.assigneesOptions = _
                   .chain(collaboratorsResponse.data)
                   .filter(collaborator => collaborator.email)
+                  .union(this.assigneesOptions)
                   .uniqBy('id')
                   .value();
               });
@@ -218,7 +220,7 @@ export default {
             http.request.get(labelsUrl).then(
               (labelsResponse) => {
                 this.repoLabels[repo.full_name] = labelsResponse.data;
-                this.labelsOptions = _.uniqBy(labelsResponse.data, 'name');
+                this.labelsOptions = _.uniqBy(_.union(this.labelsOptions, labelsResponse.data), 'name');
               });
 
             // Get issues of each repo and add it to issuesOptions
