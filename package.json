@@ -17,8 +17,9 @@
     "bootstrap": "^3.3.7",
     "bootstrap-vue": "^1.0.2",
     "dragula": "^3.7.2",
-    "vue-cookie": "^1.1.4",
+    "randomcolor": "^0.5.3",
     "vue": "^2.5.8",
+    "vue-cookie": "^1.1.4",
     "vue-multiselect": "^2.0.6",
     "vue-router": "^3.0.1"
   },

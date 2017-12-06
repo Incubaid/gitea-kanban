@@ -72,6 +72,7 @@
 <script>
 import _ from 'lodash';
 import Multiselect from 'vue-multiselect';
+import * as randomColor from 'randomcolor';
 import http from './http-common';
 import Kanban from './components/Kanban';
 
@@ -168,9 +169,21 @@ export default {
 
       // Add label of new state if it was not backlog
       if (status !== 'backlog') {
-        const label = _.find(this.repoLabels[issue.repo.full_name], { name: status });
-        const addLabelUrl = `${url}/labels?token=${this.token}`;
-        http.request.post(addLabelUrl, { labels: [label.id] }).then();
+        const foundLabel = _.find(this.repoLabels[issue.repo.full_name], { name: status });
+        if (!foundLabel) {
+          const createLabelUrl = `/repos/${issue.repo.full_name}/labels?token=${this.token}`;
+          http.request.post(createLabelUrl, { color: randomColor(), name: status }).then(
+            (response) => {
+              const label = response.data;
+              this.repoLabels[issue.repo.full_name].push(label);
+              const addLabelUrl = `${url}/labels?token=${this.token}`;
+              http.request.post(addLabelUrl, { labels: [label.id] }).then();
+            });
+        } else {
+          const label = _.find(this.repoLabels[issue.repo.full_name], { name: status });
+          const addLabelUrl = `${url}/labels?token=${this.token}`;
+          http.request.post(addLabelUrl, { labels: [label.id] }).then();
+        }
       }
     },
     updateUrl(queryObject) {
