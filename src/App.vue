@@ -85,6 +85,7 @@ export default {
   data() {
     return {
       stages: ['backlog', 'in-progress', 'question', 'validation', 'done'],
+      mappedStages: { backlog: 'backlog', 'in-progress': 'in-progress', question: 'question', validation: 'validation', done: 'done' },
       issues: [], // Show issues on board
       allIssues: [], // All issues user can access
       reposValue: [],
@@ -147,6 +148,10 @@ export default {
       const issue = _.find(this.issues, { id: Number(id) });
       const oldStatus = issue.status;
       issue.status = status;
+
+      // Map the kanban column status to gitea status
+      const giteaStatus = this.mappedStages[status];
+
       const url = `/repos/${issue.repo.full_name}/issues/${issue.number}`;
       if (oldStatus !== 'backlog' && oldStatus !== 'done') {
         const oldLabelID = _.find(issue.labels, { name: oldStatus }).id;
@@ -169,10 +174,10 @@ export default {
 
       // Add label of new state if it was not backlog
       if (status !== 'backlog') {
-        const foundLabel = _.find(this.repoLabels[issue.repo.full_name], { name: status });
+        const foundLabel = _.find(this.repoLabels[issue.repo.full_name], { name: giteaStatus });
         if (!foundLabel) {
           const createLabelUrl = `/repos/${issue.repo.full_name}/labels?token=${this.token}`;
-          http.request.post(createLabelUrl, { color: randomColor(), name: status }).then(
+          http.request.post(createLabelUrl, { color: randomColor(), name: giteaStatus }).then(
             (response) => {
               const label = response.data;
               this.repoLabels[issue.repo.full_name].push(label);
@@ -180,7 +185,7 @@ export default {
               http.request.post(addLabelUrl, { labels: [label.id] }).then();
             });
         } else {
-          const label = _.find(this.repoLabels[issue.repo.full_name], { name: status });
+          const label = _.find(this.repoLabels[issue.repo.full_name], { name: giteaStatus });
           const addLabelUrl = `${url}/labels?token=${this.token}`;
           http.request.post(addLabelUrl, { labels: [label.id] }).then();
         }
@@ -197,7 +202,22 @@ export default {
       // add assignees to url
       const stagesQuery = this.$route.query.stages;
       if (!_.isEmpty(stagesQuery)) {
-        this.stages = _.split([stagesQuery], ',');
+        // stages query will be like: Stage1:state_stage1,Stage2:state_stage2,
+        // so the first part (Stage1) is the column name which will be visible
+        // and the second part (state_stage1) is the gitea label name
+        const stagesParts = _.split([stagesQuery], ',');
+        this.mappedStages = {};
+        this.stages = [];
+        _.forEach(stagesParts, (stagePart) => {
+          if (stagePart.includes(':')) {
+            const mappedParts = stagePart.split(':');
+            this.mappedStages[mappedParts[0]] = mappedParts[1];
+            this.stages.push(mappedParts[0]);
+          } else {
+            this.mappedStages[stagePart] = stagePart;
+            this.stages.push(stagePart);
+          }
+        });
       } else {
         this.updateUrl({ stages: _.join(this.stages) });
       }
