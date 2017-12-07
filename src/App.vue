@@ -270,10 +270,10 @@ export default {
                   // Set repo and status on all issues
                   issue.repo = repo;
                   const labelObj = _.find(
-                    issue.labels, label => _.includes(this.stages, label.name),
+                    issue.labels, label => _.includes(_.values(this.mappedStages), label.name),
                   );
                   if (labelObj) {
-                    issue.status = labelObj.name;
+                    issue.status = _.findKey(this.mappedStages, labelObj.name);
                   } else if (issue.state === 'open') {
                     issue.status = 'backlog';
                   } else {
