@@ -56,7 +56,7 @@
         <div class="issue-tag" v-if="issue.milestone">
           {{ issue.milestone.title }}
         </div>
-        <div v-for="label in issue.labels" :key="label.title" class="issue-tag" :style="{ backgroundColor: '#'+label.color}" v-if="!stages.includes(label.name)">
+        <div v-for="label in issue.labels" :key="label.title" class="issue-tag" :style="{ backgroundColor: '#'+label.color}" v-if="!(label.name in stages)">
           <span>{{label.name}}</span>
         </div><br/>
         <div class="text-right">
@@ -84,8 +84,9 @@ export default {
   },
   data() {
     return {
-      stages: ['backlog', 'in-progress', 'question', 'validation', 'done'],
-      mappedStages: { backlog: 'backlog', 'in-progress': 'in-progress', question: 'question', validation: 'validation', done: 'done' },
+      stages: {
+        backlog: 'backlog',  // labelName: representation values
+      },
       issues: [], // Show issues on board
       allIssues: [], // All issues user can access
       reposValue: [],
@@ -100,14 +101,13 @@ export default {
     };
   },
   created() {
-    this.token = '<Gitea Token>';
+    this.token = '<GITEA_TOKEN>';
     this.getKanbanData();
   },
   methods: {
     updateIssues() {
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
-
       // update issues based on the repo filter if provided
       if (this.reposValue.length > 0) {
         this.issues = _.filter(this.issues, issue => _.some(this.reposValue, issue.repo));
@@ -145,12 +145,12 @@ export default {
       this.updateUrl({ milestones: _.map(this.milestonesValue, 'title').join() });
     },
     updateIssueStatus(id, status) {
+      const statusLabel = _.findKey(this.stages, s => s === status);
       const issue = _.find(this.issues, { id: Number(id) });
-      const oldStatus = issue.status;
+      const oldStatus = _.findKey(this.stages, s => s === issue.status);
       issue.status = status;
 
       // Map the kanban column status to gitea status
-      const giteaStatus = this.mappedStages[status];
 
       const url = `/repos/${issue.repo.full_name}/issues/${issue.number}`;
       if (oldStatus !== 'backlog' && oldStatus !== 'done') {
@@ -160,7 +160,7 @@ export default {
       }
 
       // Close if issue was moved to
-      if (status === 'done') {
+      if (statusLabel === 'done') {
         const doneUrl = `${url}?token=${this.token}`;
         http.request.patch(doneUrl, { state: 'closed' }).then();
         return;
@@ -173,11 +173,11 @@ export default {
       }
 
       // Add label of new state if it was not backlog
-      if (status !== 'backlog') {
-        const foundLabel = _.find(this.repoLabels[issue.repo.full_name], { name: giteaStatus });
+      if (statusLabel !== 'backlog') {
+        const foundLabel = _.find(this.repoLabels[issue.repo.full_name], { name: statusLabel });
         if (!foundLabel) {
           const createLabelUrl = `/repos/${issue.repo.full_name}/labels?token=${this.token}`;
-          http.request.post(createLabelUrl, { color: randomColor(), name: giteaStatus }).then(
+          http.request.post(createLabelUrl, { color: randomColor(), name: statusLabel }).then(
             (response) => {
               const label = response.data;
               this.repoLabels[issue.repo.full_name].push(label);
@@ -185,7 +185,7 @@ export default {
               http.request.post(addLabelUrl, { labels: [label.id] }).then();
             });
         } else {
-          const label = _.find(this.repoLabels[issue.repo.full_name], { name: giteaStatus });
+          const label = _.find(this.repoLabels[issue.repo.full_name], { name: statusLabel });
           const addLabelUrl = `${url}/labels?token=${this.token}`;
           http.request.post(addLabelUrl, { labels: [label.id] }).then();
         }
@@ -206,21 +206,18 @@ export default {
         // so the first part (Stage1) is the column name which will be visible
         // and the second part (state_stage1) is the gitea label name
         const stagesParts = _.split([stagesQuery], ',');
-        this.mappedStages = {};
-        this.stages = [];
         _.forEach(stagesParts, (stagePart) => {
           if (stagePart.includes(':')) {
             const mappedParts = stagePart.split(':');
-            this.mappedStages[mappedParts[0]] = mappedParts[1];
-            this.stages.push(mappedParts[0]);
+            this.stages[mappedParts[0]] = mappedParts[1];
           } else {
-            this.mappedStages[stagePart] = stagePart;
-            this.stages.push(stagePart);
+            this.stages[stagePart] = stagePart;
           }
         });
       } else {
         this.updateUrl({ stages: _.join(this.stages) });
       }
+      this.stages.done = 'done';
 
       http.request.get(reposUrl).then(
         (response) => {
@@ -228,7 +225,7 @@ export default {
           _.forEach(this.reposOptions, (repo) => {
             const repoUrl = `/repos/${repo.full_name}`;
             // Get milestones for each repo and add it to milestonesOptions
-            const milestonesUrl = `${repoUrl}/milestones?token=${this.token}`;
+            const milestonesUrl = `${repoUrl}/milestones?token=${this.token}&limit=1000`;
             http.request.get(milestonesUrl).then(
               (milestonesResponse) => {
                 this.milestonesOptions = _.union(this.milestonesOptions, _.uniqBy(milestonesResponse.data, 'title'));
@@ -256,7 +253,7 @@ export default {
               });
 
             // Get issues of each repo and add it to issuesOptions
-            const issuesUrl = `${repoUrl}/issues?state=all&token=${this.token}`;
+            const issuesUrl = `${repoUrl}/issues?state=all&token=${this.token}&limit=1000`;
             http.request.get(issuesUrl).then(
               (issuesResponse) => {
                 /* eslint-disable no-param-reassign */
@@ -270,10 +267,10 @@ export default {
                   // Set repo and status on all issues
                   issue.repo = repo;
                   const labelObj = _.find(
-                    issue.labels, label => _.includes(_.values(this.mappedStages), label.name),
+                    issue.labels, label => _.has(this.stages, label.name),
                   );
                   if (labelObj) {
-                    issue.status = _.findKey(this.mappedStages, labelObj.name);
+                    issue.status = this.stages[labelObj.name];
                   } else if (issue.state === 'open') {
                     issue.status = 'backlog';
                   } else {
