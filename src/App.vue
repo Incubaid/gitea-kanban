@@ -154,7 +154,7 @@ export default {
       // update issues based on the label filter if provided
       if (this.labelsValue.length > 0) {
         this.issues = _.filter(this.issues, issue =>
-          !_.isEmpty(_.intersectionBy(this.labelsValue, issue.labels, 'id')),
+          !_.isEmpty(_.intersectionBy(this.labelsValue, issue.labels, 'name')),
         );
       }
       // add labels to url
@@ -294,10 +294,12 @@ export default {
                   const labelObj = _.find(
                     issue.labels, label => _.has(this.stages, label.name),
                   );
-                  if (labelObj) {
-                    issue.status = this.stages[labelObj.name];
-                  } else if (issue.state === 'open') {
-                    issue.status = 'backlog';
+                  if (issue.state === 'open') {
+                    if (labelObj) {
+                      issue.status = this.stages[labelObj.name];
+                    } else {
+                      issue.status = 'backlog';
+                    }
                   } else {
                     issue.status = 'done';
                   }
