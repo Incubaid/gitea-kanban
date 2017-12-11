@@ -322,12 +322,6 @@ export default {
 <style lang="scss">
 @import './assets/kanban.scss';
 
-$backlog: Grey;
-$in-progress: #2A92BF;
-$question: #D2B8A1;
-$validation: #00B961;
-$done: green;
-
 * {
   box-sizing: border-box;
 }
@@ -335,48 +329,6 @@ $done: green;
 body {
   background: #33363D;
   -webkit-font-smoothing: antialiased;
-}
-
-.drag-column {
-  &-backlog {
-    .drag-column-header,
-    .is-moved,
-    .drag-options {
-      background: $backlog;
-    }
-  }
-
-  &-in-progress {
-    .drag-column-header,
-    .is-moved,
-    .drag-options {
-      background: $in-progress;
-    }
-  }
-
-  &-question {
-    .drag-column-header,
-    .is-moved,
-    .drag-options {
-      background: $question;
-    }
-  }
-
-  &-validation {
-    .drag-column-header,
-    .is-moved,
-    .drag-options {
-      background: $validation;
-    }
-  }
-
-  &-done {
-    .drag-column-header,
-    .is-moved,
-    .drag-options {
-      background: $done;
-    }
-  }
 }
 
 .section {
