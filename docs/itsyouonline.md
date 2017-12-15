@@ -1,4 +1,4 @@
-### Using itsyou.online to authenticate kanban users
+### Running kanban in production with itsyou.online to authenticate users
 
 The authentication for kanban with itsyou.online depends on using caddy server built with iyo plugin. 
  
