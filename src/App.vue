@@ -112,9 +112,15 @@ export default {
     const jwt = this.$cookie.get('caddyoauth');
     if (jwt) {
       http.request.post('/token-by-jwt', { jwt }).then(
-        (response) => {
-          this.token = response.data.sha1;
-          this.getKanbanData();
+        (res) => {
+          this.token = res.data.sha1;
+          const userUrl = `/user?token=${this.token}`;
+          http.request.get(userUrl).then(
+            (response) => {
+              this.user = response.data;
+              this.getKanbanData();
+            },
+          );
         },
       ).catch(
         (error) => {
@@ -222,7 +228,7 @@ export default {
       });
     },
     getKanbanData() {
-      const reposUrl = `/repos/search?token=${this.token}&limit=1000`;
+      const reposUrl = `/repos/search?&uid=${this.user.id}&token=${this.token}&limit=1000`;
 
       // add assignees to url
       const stagesQuery = this.$route.query.stages;
@@ -247,6 +253,7 @@ export default {
       http.request.get(reposUrl).then(
         (response) => {
           this.reposOptions = response.data.data;
+          alert(this.reposOptions.length);
           _.forEach(this.reposOptions, (repo) => {
             const repoUrl = `/repos/${repo.full_name}`;
             // Get milestones for each repo and add it to milestonesOptions
