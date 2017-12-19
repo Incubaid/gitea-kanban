@@ -253,7 +253,6 @@ export default {
       http.request.get(reposUrl).then(
         (response) => {
           this.reposOptions = response.data.data;
-          alert(this.reposOptions.length);
           _.forEach(this.reposOptions, (repo) => {
             const repoUrl = `/repos/${repo.full_name}`;
             // Get milestones for each repo and add it to milestonesOptions
