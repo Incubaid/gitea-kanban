@@ -9,7 +9,7 @@ The authentication for kanban with itsyou.online depends on using caddy server b
 git checkout iyo
 ```
 
-3 - Make sure you have installed npm libraries and edited `src/http-common.js` file as in [Running](./running.md)  
+3 - Make sure you have installed npm libraries and edited `src/http-common.js` file to set `baseUrl` to refer to your gitea server url as in [Running](./running.md)  
 
 4 - Build the kanban to be served in production `npm run build`
 
@@ -60,7 +60,7 @@ caddy
 
 4 - User will send the code to caddy server through the call back page
 
-5 - Caddy will request jwt fro itsyou.online
+5 - Caddy will request jwt from itsyou.online
 
 6 - Itsyou.online will return the jwt to caddy server
 
