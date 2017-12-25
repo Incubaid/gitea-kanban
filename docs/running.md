@@ -12,7 +12,7 @@ cd gitea-kanban
 npm install
 ```
 
-* Edit `/src/http-common.js` and set `baseUrl` to your gitea instance url
+* Edit `/src/http-common.js` and set `baseUrl` to your gitea server url you want to connect kanban to.
 ```
 baseURL: 'http://localhost:3000/api/v1/',
 ```
