@@ -1,8 +1,9 @@
 import axios from 'axios';
+import GITEA_API from './config';
 
 export default {
   request: axios.create({
-    baseURL: 'http://localhost:3000/api/v1/',
+    baseURL: `${GITEA_API}/api/v1/`,
     params: {
       token: null,
     },
