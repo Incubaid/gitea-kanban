@@ -155,7 +155,7 @@ export default {
     this.token = '5ded18e4deb727f4cc5913ab837db5a1e5826192';
     this.initKanban();
     this.$on('loadmore', (stage) => {
-      let args;
+      let args = '';
       if (stage === 'done') {
         args = 'closed=true';
       } else if (stage === 'backlog') {
@@ -169,6 +169,11 @@ export default {
         args = `state=${stage}`;
       }
 
+      const repos = _.map(this.reposValue, 'id').join();
+      const assignees = _.map(this.assigneesValue, 'id').join();
+      const labels = _.map(this.labelsValue, 'id').join();
+      const milestones = _.map(this.milestonesValue, 'id').join();
+      args = `${args}&assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
       this.fetchIssues(args, this.pages[stage] + 1);
       this.pages[stage] = this.pages[stage] + 1;
     });
@@ -290,6 +295,7 @@ export default {
             }
             this.allIssues.push(issue);
           });
+          this.updateIssues();
         });
     },
     initRepoLabels(repoFullname) {
