@@ -200,36 +200,38 @@ export default {
       }
       this.stages.done = 'done';
 
+      http.request
+        .get(`kanban/filters?token=${this.token}`)
+        .then((fitlerResponse) => {
+          this.initFilters(fitlerResponse.data);
+          this.initIssues();
+        });
+    },
+    initIssues() {
       this.pages = _.zipObject(
         _.keys(this.stages),
         _.times(_.keys(this.stages).length, _.constant(1)),
       );
 
-      http.request
-        .get(`kanban/filters?token=${this.token}`)
-        .then((fitlerResponse) => {
-          this.initFilters(fitlerResponse.data);
-
-          const stages = _.chain(this.stages)
+      const stages = _.chain(this.stages)
             /* eslint-disable no-unused-vars */
             .filter(stage => stage !== 'done' && stage !== 'backlog')
             .map((key, val) => key)
             .value();
 
-          // Get stages issues
-          const repos = _.map(this.reposValue, 'id').join();
-          const assignees = _.map(this.assigneesValue, 'id').join();
-          const labels = _.map(this.labelsValue, 'id').join();
-          const milestones = _.map(this.milestonesValue, 'id').join();
-          const args = `assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
+      // Get stages issues
+      const repos = _.map(this.reposValue, 'id').join();
+      const assignees = _.map(this.assigneesValue, 'id').join();
+      const labels = _.map(this.labelsValue, 'id').join();
+      const milestones = _.map(this.milestonesValue, 'id').join();
+      const args = `assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
 
-          _.forEach(stages, (stage) => {
-            this.fetchIssues(`state=${stage}&${args}`);
-          });
-          this.fetchIssues(`stages=${_.join(stages)}&${args}`);
-          this.fetchIssues(`closed=true&${args}`);
-          this.updateIssues();
-        });
+      _.forEach(stages, (stage) => {
+        this.fetchIssues(`state=${stage}&${args}`);
+      });
+      this.fetchIssues(`stages=${_.join(stages)}&${args}`);
+      this.fetchIssues(`closed=true&${args}`);
+      this.updateIssues();
     },
     initFilters(filtersPayload) {
       this.reposOptions = filtersPayload.repositories;
@@ -324,9 +326,8 @@ export default {
       this.updateUrl({
         milestones: _.map(this.milestonesValue, 'name').join(),
       });
-      this.pages = 1;
       this.allIssues = [];
-      this.initKanban();
+      this.initIssues();
     },
     updateIssues() {
       // update list view of issues based on filters selected
