@@ -13,7 +13,7 @@
                        placeholder="All Repos"
                        label="full_name"
                        track-by="full_name"
-                       @input="updateIssues"
+                       @input="filterEvent"
                        selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
@@ -34,7 +34,7 @@
                        placeholder="All Assignees"
                        label="name"
                        track-by="name"
-                       @input="updateIssues"
+                       @input="filterEvent"
                        selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
@@ -55,7 +55,7 @@
                        label="name"
                        track-by="name"
                        placeholder="All Labels"
-                       @input="updateIssues"
+                       @input="filterEvent"
                        selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
@@ -76,7 +76,7 @@
                        label="name"
                        track-by="name"
                        placeholder="All Milestones"
-                       @input="updateIssues"
+                       @input="filterEvent"
                        selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
@@ -217,11 +217,17 @@ export default {
             .value();
 
           // Get stages issues
+          const repos = _.map(this.reposValue, 'id').join();
+          const assignees = _.map(this.assigneesValue, 'id').join();
+          const labels = _.map(this.labelsValue, 'id').join();
+          const milestones = _.map(this.milestonesValue, 'id').join();
+          const args = `assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
+
           _.forEach(stages, (stage) => {
-            this.fetchIssues(`state=${stage}`);
+            this.fetchIssues(`state=${stage}&${args}`);
           });
-          this.fetchIssues(`stages=${_.join(stages)}`);
-          this.fetchIssues('closed=true');
+          this.fetchIssues(`stages=${_.join(stages)}&${args}`);
+          this.fetchIssues(`closed=true&${args}`);
           this.updateIssues();
         });
     },
@@ -309,6 +315,19 @@ export default {
         );
       });
     },
+    filterEvent() {
+      this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
+      this.updateUrl({ labels: _.map(this.labelsValue, 'name').join() });
+      this.updateUrl({
+        assignees: _.map(this.assigneesValue, 'name').join(),
+      });
+      this.updateUrl({
+        milestones: _.map(this.milestonesValue, 'name').join(),
+      });
+      this.pages = 1;
+      this.allIssues = [];
+      this.initKanban();
+    },
     updateIssues() {
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
@@ -318,7 +337,6 @@ export default {
           _.some(this.reposValue, { id: _.parseInt(issue.repo_id) }),
         );
       }
-      this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
 
       // update issues based on the assignee filter if provided
       if (this.assigneesValue.length > 0) {
@@ -329,10 +347,6 @@ export default {
           );
         });
       }
-      // add assignees to url
-      this.updateUrl({
-        assignees: _.map(this.assigneesValue, 'name').join(),
-      });
 
       // update issues based on the label filter if provided
       if (this.labelsValue.length > 0) {
@@ -342,8 +356,6 @@ export default {
           ),
         );
       }
-      // add labels to url
-      this.updateUrl({ labels: _.map(this.labelsValue, 'name').join() });
 
       // update issues based on the milestones filter if provided
       if (this.milestonesValue.length > 0) {
@@ -354,11 +366,6 @@ export default {
             _.some(this.milestonesValue, { name: issue.milestone }),
         );
       }
-
-      this.updateUrl({
-        milestones: _.map(this.milestonesValue, 'name').join(),
-      });
-      // add milestones to url
     },
     updateIssueStatus(id, status) {
       const statusLabel = _.findKey(this.stages, s => s === status);
