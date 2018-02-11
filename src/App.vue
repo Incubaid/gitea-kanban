@@ -226,42 +226,64 @@ export default {
       }
       this.stages.done = 'done';
 
+      http.request
+        .get(`kanban/filters?token=${this.token}`)
+        .then((fitlerResponse) => {
+          this.initFilters(fitlerResponse.data);
+          this.initIssues();
+        });
+    },
+    initIssues() {
       this.pages = _.zipObject(
         _.keys(this.stages),
         _.times(_.keys(this.stages).length, _.constant(1)),
       );
 
-      http.request
-        .get(`kanban/filters?token=${this.token}`)
-        .then((fitlerResponse) => {
-          this.initFilters(fitlerResponse.data);
-
-          const stages = _.chain(this.stages)
+      const stages = _.chain(this.stages)
             /* eslint-disable no-unused-vars */
             .filter(stage => stage !== 'done' && stage !== 'backlog')
             .map((key, val) => key)
             .value();
 
-          // Get stages issues
-          const repos = _.map(this.reposValue, 'id').join();
-          const assignees = _.map(this.assigneesValue, 'id').join();
-          const labels = _.map(this.labelsValue, 'id').join();
-          const milestones = _.map(this.milestonesValue, 'id').join();
-          const args = `assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
+      // Get stages issues
+      const repos = _.map(this.reposValue, 'id').join();
+      const assignees = _.map(this.assigneesValue, 'id').join();
+      const labels = _.map(this.labelsValue, 'ids').join();
+      const milestones = _.map(this.milestonesValue, 'ids').join();
+      const args = `assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
 
-          _.forEach(stages, (stage) => {
-            this.fetchIssues(`state=${stage}&${args}`);
-          });
-          this.fetchIssues(`stages=${_.join(stages)}&${args}`);
-          this.fetchIssues(`closed=true&${args}`);
-          this.updateIssues();
-        });
+      _.forEach(stages, (stage) => {
+        this.fetchIssues(`state=${stage}&${args}`);
+      });
+      this.fetchIssues(`stages=${_.join(stages)}&${args}`);
+      this.fetchIssues(`closed=true&${args}`);
+      this.updateIssues();
     },
     initFilters(filtersPayload) {
       this.reposOptions = filtersPayload.repositories;
       this.assigneesOptions = filtersPayload.assignees;
-      this.labelsOptions = filtersPayload.labels;
-      this.milestonesOptions = filtersPayload.milestones;
+
+      /* eslint-disable no-param-reassign */
+      _.forEach(filtersPayload.labels, (label) => {
+        if (!_.some(this.labelsOptions, { name: label.name })) {
+          label.ids = [label.id];
+          this.labelsOptions.push(label);
+        } else {
+          const labelIdx = _.findIndex(this.labelsOptions, { name: label.name });
+          this.labelsOptions[labelIdx].ids.push(label.id);
+        }
+      });
+
+      /* eslint-disable no-param-reassign */
+      _.forEach(filtersPayload.milestones, (milestone) => {
+        if (!_.some(this.milestonesOptions, { name: milestone.name })) {
+          milestone.ids = [milestone.id];
+          this.milestonesOptions.push(milestone);
+        } else {
+          const milestoneIdx = _.findIndex(this.milestonesOptions, { name: milestone.name });
+          this.milestonesOptions[milestoneIdx].ids.push(milestone.id);
+        }
+      });
 
       // update assignee filters
       const assigneesQuery = _.split(this.$route.query.assignees);
@@ -312,9 +334,7 @@ export default {
               _.includes(issue.label_ids, option.id),
             );
 
-            if (_.isEmpty(this.repoLabels[issue.repo_fullname])) {
-              this.initRepoLabels(issue.repo_fullname);
-            }
+            this.initRepoLabels(issue.repo_fullname);
             // add status field to issues
             if (issue.closed === false) {
               if (labelObj && _.includes(this.stages, labelObj.name)) {
@@ -331,15 +351,18 @@ export default {
         });
     },
     initRepoLabels(repoFullname) {
-      // Get labels of each repo and add it to labelsOptions
-      const labelsUrl = `/repos/${repoFullname}/labels?token=${this.token}`;
-      http.request.get(labelsUrl).then((labelsResponse) => {
-        this.repoLabels[repoFullname] = labelsResponse.data;
-        this.labelsOptions = _.uniqBy(
-          _.union(this.labelsOptions, labelsResponse.data),
-          'name',
-        );
-      });
+      if (_.isEmpty(this.repoLabels[repoFullname])) {
+        this.repoLabels[repoFullname] = ['dull'];
+        // Get labels of each repo and add it to labelsOptions
+        const labelsUrl = `/repos/${repoFullname}/labels?token=${this.token}`;
+        http.request.get(labelsUrl).then((labelsResponse) => {
+          this.repoLabels[repoFullname] = labelsResponse.data;
+          this.labelsOptions = _.uniqBy(
+            _.union(this.labelsOptions, labelsResponse.data),
+            'name',
+          );
+        });
+      }
     },
     filterEvent() {
       this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
@@ -350,49 +373,13 @@ export default {
       this.updateUrl({
         milestones: _.map(this.milestonesValue, 'name').join(),
       });
-      this.pages = 1;
       this.allIssues = [];
-      this.initKanban();
+      this.initIssues();
     },
     updateIssues() {
       this.loaderShow = false;
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
-      // update issues based on the repo filter if provided
-      if (this.reposValue.length > 0) {
-        this.issues = _.filter(this.issues, issue =>
-          _.some(this.reposValue, { id: _.parseInt(issue.repo_id) }),
-        );
-      }
-
-      // update issues based on the assignee filter if provided
-      if (this.assigneesValue.length > 0) {
-        this.issues = _.filter(this.issues, (issue) => {
-          const assigned = !_.isEmpty(issue.assignee);
-          return (
-            assigned && _.some(this.assigneesValue, { name: issue.assignee })
-          );
-        });
-      }
-
-      // update issues based on the label filter if provided
-      if (this.labelsValue.length > 0) {
-        this.issues = _.filter(this.issues, issue =>
-          _.some(this.labelsValue, option =>
-            _.includes(issue.label_ids, option.id),
-          ),
-        );
-      }
-
-      // update issues based on the milestones filter if provided
-      if (this.milestonesValue.length > 0) {
-        this.issues = _.filter(
-          this.issues,
-          issue =>
-            !_.isEmpty(issue.milestone) &&
-            _.some(this.milestonesValue, { name: issue.milestone }),
-        );
-      }
     },
     updateIssueStatus(id, status) {
       const statusLabel = _.findKey(this.stages, s => s === status);
@@ -429,7 +416,8 @@ export default {
         const foundLabel = _.find(this.repoLabels[issue.repo_fullname], {
           name: statusLabel,
         });
-        if (!foundLabel) {
+
+        if (_.isEmpty(foundLabel)) {
           const createLabelUrl = `/repos/${issue.repo_fullname}/labels?token=${
             this.token
           }`;
