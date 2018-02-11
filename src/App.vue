@@ -222,8 +222,8 @@ export default {
       // Get stages issues
       const repos = _.map(this.reposValue, 'id').join();
       const assignees = _.map(this.assigneesValue, 'id').join();
-      const labels = _.map(this.labelsValue, 'id').join();
-      const milestones = _.map(this.milestonesValue, 'id').join();
+      const labels = _.map(this.labelsValue, 'ids').join();
+      const milestones = _.map(this.milestonesValue, 'ids').join();
       const args = `assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
 
       _.forEach(stages, (stage) => {
@@ -236,8 +236,28 @@ export default {
     initFilters(filtersPayload) {
       this.reposOptions = filtersPayload.repositories;
       this.assigneesOptions = filtersPayload.assignees;
-      this.labelsOptions = filtersPayload.labels;
-      this.milestonesOptions = filtersPayload.milestones;
+
+      /* eslint-disable no-param-reassign */
+      _.forEach(filtersPayload.labels, (label) => {
+        if (!_.some(this.labelsOptions, { name: label.name })) {
+          label.ids = [label.id];
+          this.labelsOptions.push(label);
+        } else {
+          const labelIdx = _.findIndex(this.labelsOptions, { name: label.name });
+          this.labelsOptions[labelIdx].ids.push(label.id);
+        }
+      });
+
+      /* eslint-disable no-param-reassign */
+      _.forEach(filtersPayload.milestones, (milestone) => {
+        if (!_.some(this.milestonesOptions, { name: milestone.name })) {
+          milestone.ids = [milestone.id];
+          this.milestonesOptions.push(milestone);
+        } else {
+          const milestoneIdx = _.findIndex(this.milestonesOptions, { name: milestone.name });
+          this.milestonesOptions[milestoneIdx].ids.push(milestone.id);
+        }
+      });
 
       // update assignee filters
       const assigneesQuery = _.split(this.$route.query.assignees);
@@ -332,41 +352,6 @@ export default {
     updateIssues() {
       // update list view of issues based on filters selected
       this.issues = this.allIssues;
-      // update issues based on the repo filter if provided
-      if (this.reposValue.length > 0) {
-        this.issues = _.filter(this.issues, issue =>
-          _.some(this.reposValue, { id: _.parseInt(issue.repo_id) }),
-        );
-      }
-
-      // update issues based on the assignee filter if provided
-      if (this.assigneesValue.length > 0) {
-        this.issues = _.filter(this.issues, (issue) => {
-          const assigned = !_.isEmpty(issue.assignee);
-          return (
-            assigned && _.some(this.assigneesValue, { name: issue.assignee })
-          );
-        });
-      }
-
-      // update issues based on the label filter if provided
-      if (this.labelsValue.length > 0) {
-        this.issues = _.filter(this.issues, issue =>
-          _.some(this.labelsValue, option =>
-            _.includes(issue.label_ids, option.id),
-          ),
-        );
-      }
-
-      // update issues based on the milestones filter if provided
-      if (this.milestonesValue.length > 0) {
-        this.issues = _.filter(
-          this.issues,
-          issue =>
-            !_.isEmpty(issue.milestone) &&
-            _.some(this.milestonesValue, { name: issue.milestone }),
-        );
-      }
     },
     updateIssueStatus(id, status) {
       const statusLabel = _.findKey(this.stages, s => s === status);
