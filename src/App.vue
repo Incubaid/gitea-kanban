@@ -308,9 +308,7 @@ export default {
               _.includes(issue.label_ids, option.id),
             );
 
-            if (_.isEmpty(this.repoLabels[issue.repo_fullname])) {
-              this.initRepoLabels(issue.repo_fullname);
-            }
+            this.initRepoLabels(issue.repo_fullname);
             // add status field to issues
             if (issue.closed === false) {
               if (labelObj && _.includes(this.stages, labelObj.name)) {
@@ -327,15 +325,18 @@ export default {
         });
     },
     initRepoLabels(repoFullname) {
-      // Get labels of each repo and add it to labelsOptions
-      const labelsUrl = `/repos/${repoFullname}/labels?token=${this.token}`;
-      http.request.get(labelsUrl).then((labelsResponse) => {
-        this.repoLabels[repoFullname] = labelsResponse.data;
-        this.labelsOptions = _.uniqBy(
-          _.union(this.labelsOptions, labelsResponse.data),
-          'name',
-        );
-      });
+      if (_.isEmpty(this.repoLabels[repoFullname])) {
+        this.repoLabels[repoFullname] = ['dull'];
+        // Get labels of each repo and add it to labelsOptions
+        const labelsUrl = `/repos/${repoFullname}/labels?token=${this.token}`;
+        http.request.get(labelsUrl).then((labelsResponse) => {
+          this.repoLabels[repoFullname] = labelsResponse.data;
+          this.labelsOptions = _.uniqBy(
+            _.union(this.labelsOptions, labelsResponse.data),
+            'name',
+          );
+        });
+      }
     },
     filterEvent() {
       this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
@@ -388,7 +389,8 @@ export default {
         const foundLabel = _.find(this.repoLabels[issue.repo_fullname], {
           name: statusLabel,
         });
-        if (!foundLabel) {
+
+        if (_.isEmpty(foundLabel)) {
           const createLabelUrl = `/repos/${issue.repo_fullname}/labels?token=${
             this.token
           }`;
