@@ -154,6 +154,9 @@ export default {
       assigneesOptions: [],
       repoLabels: {}, // example: {sample-repo: LabelObject}, used to add/remove labels
       pages: {}, // example: {stage: <pageCount>}
+      showAlert: false,
+      authErrorMsg: null,
+      loaderShow: true,
     };
   },
   created() {
