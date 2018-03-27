@@ -325,6 +325,9 @@ export default {
         .then((issuesResponse) => {
           /* eslint-disable no-param-reassign */
           _.forEach(issuesResponse.data, (issue) => {
+            if (_.find(this.allIssues, { id: _.parseInt(issue.id) })) {
+              return true;
+            }
             issue.repo_fullname = _.find(this.reposOptions, {
               id: _.parseInt(issue.repo_id),
             }).full_name;
@@ -333,22 +336,26 @@ export default {
             }`;
 
             // Set repo and status on all issues
-            const labelObj = _.find(this.labelsOptions, option =>
-              _.includes(issue.label_ids, option.id),
-            );
-
+            const labelObjs = _.filter(this.labelsOptions,
+              option => _.some(issue.label_ids, id => _.includes(option.ids, id)));
             this.initRepoLabels(issue.repo_fullname);
             // add status field to issues
             if (issue.closed === false) {
-              if (labelObj && _.includes(this.stages, labelObj.name)) {
-                issue.status = this.stages[labelObj.name];
-              } else {
-                issue.status = 'backlog';
+              issue.status = 'backlog';
+              if (labelObjs) {
+                _.forEach(labelObjs, (labelObj) => {
+                  if (_.includes(this.stages, labelObj.name)) {
+                    issue.status = this.stages[labelObj.name];
+                    return false;
+                  }
+                  return true;
+                });
               }
             } else {
               issue.status = 'done';
             }
             this.allIssues.push(issue);
+            return true;
           });
           this.updateIssues();
         });
