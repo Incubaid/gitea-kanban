@@ -289,7 +289,7 @@ export default {
       });
 
       // update assignee filters
-      const assigneesQuery = _.split(this.$route.query.assignees);
+      const assigneesQuery = _.split(this.$route.query.assignees, ',');
       if (!_.isEmpty(assigneesQuery)) {
         this.assigneesValue = _.filter(this.assigneesOptions, assignee =>
           _.includes(assigneesQuery, assignee.name),
@@ -297,14 +297,14 @@ export default {
       }
 
       // update milestone filters
-      const milestonesQuery = _.split(this.$route.query.milestones);
+      const milestonesQuery = _.split(this.$route.query.milestones, ',');
       if (!_.isEmpty(milestonesQuery)) {
         this.milestonesValue = _.filter(this.milestonesOptions, milestone =>
           _.includes(milestonesQuery, milestone.name),
         );
       }
       // update label filters
-      const labelsQuery = _.split(this.$route.query.labels);
+      const labelsQuery = _.split(this.$route.query.labels, ',');
       if (!_.isEmpty(labelsQuery)) {
         this.labelsValue = _.filter(this.labelsOptions, label =>
           _.includes(labelsQuery, label.name),
@@ -312,7 +312,7 @@ export default {
       }
 
       // update repo filters
-      const reposQuery = _.split(this.$route.query.repos);
+      const reposQuery = _.split(this.$route.query.repos, ',');
       if (!_.isEmpty(reposQuery)) {
         this.reposValue = _.filter(this.reposOptions, repo =>
           _.includes(reposQuery, repo.full_name),
