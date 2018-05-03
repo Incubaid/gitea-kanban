@@ -18,7 +18,7 @@
                        placeholder="All Repos"
                        label="full_name"
                        track-by="full_name"
-                       @input="filterEvent"
+                       @input="reposFilterEvent"
                        selectLabel="">
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
@@ -51,7 +51,7 @@
         </div>
         <div class="col-md-3">
           <multiselect v-model="labelsValue"
-                       :options="labelsOptions"
+                       :options="labelsFilteredOptions"
                        :multiple="true"
                        :close-on-select="false"
                        :clear-on-select="false"
@@ -72,7 +72,7 @@
         </div>
         <div class="col-md-3">
           <multiselect v-model="milestonesValue"
-                       :options="milestonesOptions"
+                       :options="milestonesFilteredOptions"
                        :multiple="true"
                        :close-on-select="false"
                        :clear-on-select="false"
@@ -97,27 +97,30 @@
     <Kanban :stages="stages" :blocks="issues" @update-block="updateIssueStatus">
       <div v-for="issue in issues" :slot="issue.id" :key="issue.id">
         <div v-if="issue.assignee">
-          <img class="avatar img-rounded" :src="issue.assignee.avatar_url" />
+          <a :href="issue.assignee.profile_url" target="_blank">
+            <img class="avatar img-rounded" :src="issue.assignee.avatar_url" :alt="issue.assignee.name" :title="issue.assignee.name"/>
+          </a>
         </div>
         <div>
-          <strong>{{ issue.name }}</strong>
+          <a style="color: white;text-decoration: none;" :href="issue.url" target="_blank">
+            <strong>{{ issue.name }}</strong>
+          </a>
         </div>
         <div class="issue-tag" v-if="issue.milestone">
           {{ issue.milestone }}
         </div>
-        <!-- FIXME: add labels to issue payload -->
-        <!-- <div v-for="label in issue.labels"
-             :key="label.title"
+        <div v-for="label in issue.labels"
+             :key="label.name"
              class="issue-tag"
-             :style="{ backgroundColor: '#'+label.color}"
+             :style="{ backgroundColor: label.color, color:'black'}"
              v-if="!(label.name in stages)">
           <span>{{label.name}}</span>
-        </div><br/> -->
-        <div class="text-right">
+        </div><br/>
+        <!-- <div class="text-right">
           <a class="badge badge-secondary" :href="issue.url" target="_blank">
             <span class="glyphicon glyphicon-link"></span>
           </a>
-        </div>
+        </div> -->
       </div>
     </Kanban>
   </div>
@@ -148,8 +151,10 @@ export default {
       reposOptions: [],
       milestonesValue: [],
       milestonesOptions: [],
+      milestonesFilteredOptions: [],
       labelsValue: [],
       labelsOptions: [],
+      labelsFilteredOptions: [],
       assigneesValue: [],
       assigneesOptions: [],
       repoLabels: {}, // example: {sample-repo: LabelObject}, used to add/remove labels
@@ -270,23 +275,29 @@ export default {
       _.forEach(filtersPayload.labels, (label) => {
         if (!_.some(this.labelsOptions, { name: label.name })) {
           label.ids = [label.id];
+          label.repos_ids = [label.repo_id];
           this.labelsOptions.push(label);
         } else {
           const labelIdx = _.findIndex(this.labelsOptions, { name: label.name });
           this.labelsOptions[labelIdx].ids.push(label.id);
+          this.labelsOptions[labelIdx].repos_ids.push(label.repo_id);
         }
       });
+      this.labelsFilteredOptions = this.labelsOptions;
 
       /* eslint-disable no-param-reassign */
       _.forEach(filtersPayload.milestones, (milestone) => {
         if (!_.some(this.milestonesOptions, { name: milestone.name })) {
           milestone.ids = [milestone.id];
+          milestone.repos_ids = [milestone.repo_id];
           this.milestonesOptions.push(milestone);
         } else {
           const milestoneIdx = _.findIndex(this.milestonesOptions, { name: milestone.name });
           this.milestonesOptions[milestoneIdx].ids.push(milestone.id);
+          this.milestonesOptions[milestoneIdx].repos_ids.push(milestone.repo_id);
         }
       });
+      this.milestonesFilteredOptions = this.milestonesOptions;
 
       // update assignee filters
       const assigneesQuery = _.split(this.$route.query.assignees, ',');
@@ -312,11 +323,19 @@ export default {
       }
 
       // update repo filters
-      const reposQuery = _.split(this.$route.query.repos, ',');
-      if (!_.isEmpty(reposQuery)) {
+      if (this.$route.query.repos) {
+        const reposQuery = _.split(this.$route.query.repos, ',');
         this.reposValue = _.filter(this.reposOptions, repo =>
           _.includes(reposQuery, repo.full_name),
         );
+        // Filter labels and milestones to the selected repos only
+        this.labelsFilteredOptions = _.filter(this.labelsOptions,
+          option => _.some(option.repos_ids,
+            repoId => _.includes(_.map(this.reposValue, 'id'), repoId)));
+
+        this.milestonesFilteredOptions = _.filter(this.milestonesOptions,
+          option => _.some(option.repos_ids,
+            repoId => _.includes(_.map(this.reposValue, 'id'), repoId)));
       }
     },
     fetchIssues(args, page = 1) {
@@ -337,7 +356,7 @@ export default {
 
             // Set repo and status on all issues
             const labelObjs = _.filter(this.labelsOptions,
-              option => _.some(issue.label_ids, id => _.includes(option.ids, id)));
+              option => _.some(issue.labels, label => _.includes(option.ids, label.id)));
             this.initRepoLabels(issue.repo_fullname);
             // add status field to issues
             if (issue.closed === false) {
@@ -385,6 +404,21 @@ export default {
       });
       this.allIssues = [];
       this.initIssues();
+    },
+    reposFilterEvent() {
+      this.filterEvent();
+      // Update filters of labels and milestones based on selected repos
+      if (this.reposValue.length === 0) {
+        this.labelsFilteredOptions = this.labelsOptions;
+        this.milestonesFilteredOptions = this.milestonesOptions;
+        return;
+      }
+      this.labelsFilteredOptions = _.filter(this.labelsOptions,
+        option => _.some(option.repos_ids,
+          repoId => _.includes(_.map(this.reposValue, 'id'), repoId)));
+      this.milestonesFilteredOptions = _.filter(this.milestonesOptions,
+        option => _.some(option.repos_ids,
+          repoId => _.includes(_.map(this.reposValue, 'id'), repoId)));
     },
     updateIssues() {
       this.loaderShow = false;
