@@ -175,28 +175,7 @@ export default {
             (response) => {
               this.user = response.data;
               this.initKanban();
-              this.$on('loadmore', (stage) => {
-                let args;
-                if (stage === 'done') {
-                  args = 'closed=true';
-                } else if (stage === 'backlog') {
-                  const stages = _.chain(this.stages)
-                    /* eslint-disable no-unused-vars */
-                    .filter(stag => stag !== 'done' && stag !== 'backlog')
-                    .map((key, val) => key)
-                    .value();
-                  args = `stages=${_.join(stages)}`;
-                } else {
-                  args = `state=${stage}`;
-                }
-                const repos = _.map(this.reposValue, 'id').join();
-                const assignees = _.map(this.assigneesValue, 'id').join();
-                const labels = _.map(this.labelsValue, 'id').join();
-                const milestones = _.map(this.milestonesValue, 'id').join();
-                args = `${args}&assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
-                this.fetchIssues(args, this.pages[stage] + 1);
-                this.pages[stage] = this.pages[stage] + 1;
-              });
+              this.$on('loadmore', this.updateScroll);
             },
           );
         },
@@ -486,6 +465,31 @@ export default {
       this.$router.push({
         query: Object.assign({}, this.$route.query, queryObject),
       });
+    },
+    updateScroll(stage, event) {
+      const element = event.target;
+      if (element.scrollHeight - element.scrollTop === element.clientHeight) {
+        let args;
+        if (stage === 'done') {
+          args = 'closed=true';
+        } else if (stage === 'backlog') {
+          const stages = _.chain(this.stages)
+            /* eslint-disable no-unused-vars */
+            .filter(stag => stag !== 'done' && stag !== 'backlog')
+            .map((key, val) => key)
+            .value();
+          args = `stages=${_.join(stages)}`;
+        } else {
+          args = `state=${stage}`;
+        }
+        const repos = _.map(this.reposValue, 'id').join();
+        const assignees = _.map(this.assigneesValue, 'id').join();
+        const labels = _.map(this.labelsValue, 'id').join();
+        const milestones = _.map(this.milestonesValue, 'id').join();
+        args = `${args}&assignees=${assignees}&repos=${repos}&labels=${labels}&milestones=${milestones}`;
+        this.fetchIssues(args, this.pages[stage] + 1);
+        this.pages[stage] = this.pages[stage] + 1;
+      }
     },
   },
 };

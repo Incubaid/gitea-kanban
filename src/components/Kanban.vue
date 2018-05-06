@@ -6,7 +6,7 @@
     				<h2>{{ stage }}</h2>
     			</span>
     			<div class="drag-options"></div>
-    			<ul class="drag-inner-list" ref="list" :data-status="stage">
+          <ul class="drag-inner-list" ref="list" :data-status="stage" v-on:scroll="emitLoad(stage, $event)">
             <li class="drag-item" v-for="block in getBlocks(stage)" :data-block-id="block.id" :key="block.id">
                 <slot :name="block.id">
                     <strong>{{ block.status }}</strong>
@@ -14,10 +14,6 @@
                 </slot>
             </li>
     			</ul>
-          <br />
-          <p class="loadmore">
-            <button type="button" class="btn btn-primary" v-on:click="emitLoad(stage)">Load more!</button>
-          </p>
     		</li>
     	</ul>
     </div>
@@ -47,8 +43,8 @@ export default {
     getBlocks(status) {
       return this.localBlocks.filter(block => block.status === status);
     },
-    emitLoad(stage) {
-      this.$parent.$emit('loadmore', stage);
+    emitLoad(stage, event) {
+      this.$parent.$emit('loadmore', stage, event);
     },
   },
 
@@ -90,7 +86,7 @@ export default {
 }
 
 .drag-inner-list {
-  height: calc(100vh - 220px);;
+  height: calc(100vh - 170px);;
   overflow-x : hidden;
 }
 </style>
