@@ -252,6 +252,7 @@ export default {
 
       /* eslint-disable no-param-reassign */
       _.forEach(filtersPayload.labels, (label) => {
+        label.name = label.name.trim();
         if (!_.some(this.labelsOptions, { name: label.name })) {
           label.ids = [label.id];
           label.repos_ids = [label.repo_id];
@@ -266,6 +267,7 @@ export default {
 
       /* eslint-disable no-param-reassign */
       _.forEach(filtersPayload.milestones, (milestone) => {
+        milestone.name = milestone.name.trim();
         if (!_.some(this.milestonesOptions, { name: milestone.name })) {
           milestone.ids = [milestone.id];
           milestone.repos_ids = [milestone.repo_id];
