@@ -7,3 +7,4 @@ yarn-error.log*
 test/unit/coverage
 .vscode/
 .idea
+package-lock.json
