@@ -23,7 +23,7 @@
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
                 <span>{{ props.option.full_name }}</span>
-                <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
+                <span class="custom__remove" @click="props.remove(props.option)">&times; </span>
               </span>
             </template>
           </multiselect>
@@ -44,7 +44,7 @@
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
                 <span>{{ props.option.name }}</span>
-                <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
+                <span class="custom__remove" @click="props.remove(props.option)">&times; </span>
               </span>
             </template>
           </multiselect>
@@ -65,7 +65,7 @@
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
                 <span>{{ props.option.name}}</span>
-                <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
+                <span class="custom__remove" @click="props.remove(props.option)">&times; </span>
               </span>
             </template>
           </multiselect>
@@ -86,7 +86,7 @@
             <template slot="tag" slot-scope="props">
               <span class="custom__tag">
                 <span>{{ props.option.name }}</span>
-                <span class="custom__remove" @click="props.remove(props.option)">❌ </span>
+                <span class="custom__remove" @click="props.remove(props.option)">&times; </span>
               </span>
             </template>
           </multiselect>
@@ -560,6 +560,10 @@ body {
   height: 120px;
   -webkit-animation: spin 2s linear infinite;
   animation: spin 2s linear infinite;
+}
+
+.custom__remove {
+  font-size: 1.4em;
 }
 
 @-webkit-keyframes spin {
