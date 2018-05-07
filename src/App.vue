@@ -564,6 +564,7 @@ body {
 
 .custom__remove {
   font-size: 1.4em;
+  line-height: 1em
 }
 
 @-webkit-keyframes spin {
