@@ -252,6 +252,8 @@ export default {
 
       /* eslint-disable no-param-reassign */
       _.forEach(filtersPayload.labels, (label) => {
+        const repoIdx = _.findIndex(this.reposOptions, { id: label.repo_id });
+        this.reposOptions[repoIdx].labels.push(label);
         label.name = label.name.trim();
         if (!_.some(this.labelsOptions, { name: label.name })) {
           label.ids = [label.id];
