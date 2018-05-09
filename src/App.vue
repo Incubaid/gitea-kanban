@@ -338,7 +338,6 @@ export default {
             // Set repo and status on all issues
             const labelObjs = _.filter(this.labelsOptions,
               option => _.some(issue.labels, label => _.includes(option.ids, label.id)));
-            this.initRepoLabels(issue.repo_fullname);
             // add status field to issues
             if (issue.closed === false) {
               issue.status = 'backlog';
@@ -359,20 +358,6 @@ export default {
           });
           this.updateIssues();
         });
-    },
-    initRepoLabels(repoFullname) {
-      if (_.isEmpty(this.repoLabels[repoFullname])) {
-        this.repoLabels[repoFullname] = ['dull'];
-        // Get labels of each repo and add it to labelsOptions
-        const labelsUrl = `/repos/${repoFullname}/labels?token=${this.token}`;
-        http.request.get(labelsUrl).then((labelsResponse) => {
-          this.repoLabels[repoFullname] = labelsResponse.data;
-          this.labelsOptions = _.uniqBy(
-            _.union(this.labelsOptions, labelsResponse.data),
-            'name',
-          );
-        });
-      }
     },
     filterEvent() {
       this.updateUrl({ repos: _.map(this.reposValue, 'full_name').join() });
@@ -415,10 +400,9 @@ export default {
       // Map the kanban column status to gitea status
 
       const url = `/repos/${issue.repo_fullname}/issues/${issue.index}`;
+      const issueRepo = _.find(this.reposOptions, { id: issue.repo_id });
       if (oldStatus !== 'backlog' && oldStatus !== 'done') {
-        const oldLabelID = _.find(this.repoLabels[issue.repo_fullname], {
-          name: oldStatus,
-        }).id;
+        const oldLabelID = _.find(issueRepo.labels, { name: oldStatus }).id;
         const deleteUrl = `${url}/labels/${oldLabelID}?token=${this.token}`;
         http.request.delete(deleteUrl).then();
       }
@@ -438,10 +422,7 @@ export default {
 
       // Add label of new state if it was not backlog
       if (statusLabel !== 'backlog') {
-        const foundLabel = _.find(this.repoLabels[issue.repo_fullname], {
-          name: statusLabel,
-        });
-
+        const foundLabel = _.find(issueRepo.labels, { name: statusLabel });
         if (_.isEmpty(foundLabel)) {
           const createLabelUrl = `/repos/${issue.repo_fullname}/labels?token=${
             this.token
@@ -450,14 +431,15 @@ export default {
             .post(createLabelUrl, { color: randomColor(), name: statusLabel })
             .then((response) => {
               const label = response.data;
-              this.repoLabels[issue.repo_fullname].push(label);
+              issueRepo.labels.push({
+                id: label.id,
+                name: label.name,
+              });
               const addLabelUrl = `${url}/labels?token=${this.token}`;
               http.request.post(addLabelUrl, { labels: [label.id] }).then();
             });
         } else {
-          const label = _.find(this.repoLabels[issue.repo_fullname], {
-            name: statusLabel,
-          });
+          const label = _.find(issueRepo.labels, { name: statusLabel });
           const addLabelUrl = `${url}/labels?token=${this.token}`;
           http.request.post(addLabelUrl, { labels: [label.id] }).then();
         }
